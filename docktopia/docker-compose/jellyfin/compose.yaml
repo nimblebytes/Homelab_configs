@@ -1,0 +1,51 @@
+########################### STACK PROPERTIES
+name: "jellyfin"
+
+########################### SERVICES      
+services:
+  jellyfin:
+    # image: jellyfin/jellyfin:${IMAGE_TAG:-latest}
+    image: linuxserver/jellyfin:${IMAGE_TAG:-latest}
+    container_name: ${CONTAINER_NAME:-jellyfin}
+    hostname: ${HOSTNAME}
+    restart: unless-stopped
+    ports:
+      - "${HOST_IP:?}:8096:8096"
+    environment:
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
+      - TZ=${TZ:?}      
+
+    devices:
+    #   # VAAPI Devices - needed for Transcoding
+    #   - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card0:/dev/dri/card0
+
+    volumes:
+      - ${CONTAINER_VOLUME:?}/config:/config
+      - ${CONTAINER_VOLUME:?}/cache:/cache
+      - ${MEDIA_DOCU_VOLUME:?}:/Docus
+      - ${MEDIA_MOVIES_VOLUME:?}:/Movies
+      - ${MEDIA_MUSIC_VOLUME:?}:/Music
+      - ${MEDIA_TVSERIES_VOLUME:?}:/TV_Series
+
+    labels:
+      - homepage.group=Media Players
+      - homepage.name=Jellyfin
+      - homepage.icon=jellyfin.png
+      - homepage.href=https://jelly.${DOMAIN_NAME:?}
+      - homepage.description=Jellyfin portal
+      - homepage.widget.type=jellyfin
+      - homepage.widget.url=https://jelly.${DOMAIN_NAME:?}
+      - homepage.widget.key={{HOMEPAGE_FILE_JELLYFIN_API_KEY}}
+      - homepage.widget.enableBlocks=true                           ## Optional. Default: false. Show the info fields
+      - homepage.widget.fields=["movies", "series", "songs"]        ## Options: "movies", "series", "episodes", "songs"
+      - homepage.widget.enableNowPlaying=true                       ## Optional. Defaults: true
+
+      # - "traefik.enable=true"
+      # - "traefik.http.routers.jellyfin.entrypoints=https-internal"     ## Only available for the internal network
+      # - "traefik.http.routers.jellyfin.rule=Host(`jelly.${DOMAIN_NAME:?}`)"
+      # - "traefik.http.routers.jellyfin.service=jellyfin"
+      # - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt_dns"
+      # - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+      # - "traefik.http.services.jellyfin.loadbalancer.server.scheme=http"    
