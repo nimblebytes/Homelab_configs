@@ -1,0 +1,109 @@
+########################### STACK PROPERTIES
+name: "core-network"
+
+
+########################### NETWORKS
+networks:
+  socketproxy:
+    name: socketproxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+  proxy:
+    name: proxy
+    external: true 
+        
+
+########################### Services     
+services:
+  ## Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
+  dockersocketproxy:
+    container_name: ${CONTAINER_NAME_SOCKETPROXY:-socketproxy}
+    image: ghcr.io/tecnativa/docker-socket-proxy:${IMAGE_TAG_SOCKETPROXY:-latest}
+    restart: unless-stopped
+    networks:
+      - socketproxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+    # - "127.0.0.1:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
+      - "2375:2375"     # I to manage multiple docker endpoints within my home network, so the following config is used
+    volumes:
+      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
+    environment:
+      - LOG_LEVEL=info # debug,info,notice,warning,err,crit,alert,emerg
+      ## Grant access=1; revoke=0
+      ## Granted by Default
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      ## Revoked by Default
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1 # Watchtower
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1 # Traefik, portainer, etc.
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1 # Portainer
+      - INFO=1 # Portainer
+      - NETWORKS=1 # Portainer
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=1 # Portainer
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=1 # Portainer
+      - VOLUMES=1 # Portainer
+
+  ## Portainer - WebUI for Containers
+  portainer:
+    container_name: ${CONTAINER_NAME_PORTAINER:-portainer}
+    image: portainer/portainer-ce:${IMAGE_TAG_PORTAINER:-latest}
+    depends_on: 
+      - dockersocketproxy
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - socketproxy
+      - proxy
+    ports:
+      - "${HOST_IP:?}:9000:9000"
+      - "${HOST_IP:?}:9443:9443"
+      #- 9000:9000
+    volumes:
+      - ${CONTAINER_VOLUME_PORTAINER:-.}/data:/data
+      # - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock ##only for direct access to the docker socket
+    environment:
+      - TZ=$TZ
+      - DOCKER_HOST=tcp://dockersocketproxy:2375 --base-url=/portainer
+      # - DOCKER_HOST=tcp://dockersocketproxy:2375
+
+    command: -H tcp://dockersocketproxy:2375 
+    #command: -H unix:///var/run/docker.sock
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/portainer`)"
+      - "traefik.http.routers.portainer.entrypoints=https-internal"     ## Only available for the internal network
+      - "traefik.http.routers.portainer.middlewares=portainer-stripprefix"
+      - "traefik.http.routers.portainer.service=portainer"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt_dns"      
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.services.portainer.loadbalancer.server.scheme=http"
+      - "traefik.http.middlewares.portainer-stripprefix.stripprefix.prefixes=/portainer"
+      - homepage.group=Docker Oversight
+      - homepage.name=Portainer
+      - homepage.icon=portainer.svg
+      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/portainer
+      - homepage.description=Docker GUI Manager - ${HOSTNAME:?}
+      - homepage.widget.type=portainer
+      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/portainer
+      - homepage.widget.env=1
+      - homepage.widget.key={{HOMEPAGE_FILE_PORTAINER_API_KEY_${HOSTNAME}}}
