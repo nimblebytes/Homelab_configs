@@ -1,0 +1,28 @@
+########################### STACK PROPERTIES
+name: "flaresolverr"
+
+########################### NETWORKS
+networks:
+  proxy:
+    name: proxy
+    external: true    
+  flaresolverr_network:
+    driver: bridge
+
+########################### SERVICES  
+services:
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr
+    container_name: "flaresolverr"
+    restart: unless-stopped
+    user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}       ## Overrides the user used to run the container process.
+    networks:
+      - flaresolverr_network
+      - proxy
+    ports:
+      - "${HOST_IP:?}:8191:8191"
+    ## File containing environment variables to be inserted into the container
+    env_file: 
+      - .env.flaresolverr
+    environment:
+      - TZ=${TZ:-Europe/Berlin}    
