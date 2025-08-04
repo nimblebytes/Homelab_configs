@@ -1,0 +1,126 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/latest/configs/services
+
+- Core Network:
+
+    - TP-Link:
+        icon: tp-link.png
+        href: http://192.168.1.1
+        description: Main Router
+
+    - OPNSense - Config:
+        href: https://10.0.30.1
+        description: Sharkfin - Firewall
+        icon: opnsense.png
+
+    - Proxmox - Sharkfin:
+        icon: proxmox.svg
+        href: https://10.0.30.2:8006
+        description: Sharkfin - Hypervisor
+        widget:
+            type: proxmox
+            url: https://10.0.30.2:8006
+            username: {{HOMEPAGE_FILE_PROXMOX_USER}}
+            password: {{HOMEPAGE_FILE_PROXMOX_API_KEY}}
+
+    - Proxmox - Smallbeard:
+        icon: proxmox.svg
+        href: https://10.0.30.6:8006
+        description: Smallbeard - Hypervisor
+        widget:
+            type: proxmox
+            url: https://10.0.30.6:8006
+            username: {{HOMEPAGE_FILE_PROXMOX_SMALLBEARD_USER}}
+            password: {{HOMEPAGE_FILE_PROXMOX_SMALLBEARD_API_KEY}}            
+
+    - Pi-Hole:
+        icon: pi-hole.svg
+        href: http://10.0.31.5/admin
+        description: Sharkfin
+        widget:
+            type: pihole
+            version: 6
+            url: http://10.0.31.5
+            key: {{HOMEPAGE_FILE_PIHOLE_SHARKFIN_API_KEY}}
+
+    - Omada - Cedar:
+        icon: omada.svg
+        href: https://10.0.40.10:8043
+        description: Omada Controller - Cedar
+        widget:
+            type: omada
+            url: https://10.0.40.10:8043
+            username: {{HOMEPAGE_FILE_OMADA_USERNAME}}
+            password: {{HOMEPAGE_FILE_OMADA_PASSWORD}}
+            site: {{HOMEPAGE_FILE_OMADA_SITE}}
+
+    - Managed Switch:
+        icon: mdi-access-point-network-#f0d453
+        href: http://10.0.40.100
+        description: Hasivo 9 port 2.5G managed switch
+            
+
+- Media Players:
+    - Kodi:
+        icon: kodi.png
+        href: http://192.168.1.10:8080
+        description: Kodi
+
+
+- Docker Oversight:
+    # - Portainer-old:
+    #     href: https://docktopia.{{HOMEPAGE_VAR_DOMAIN_NAME}}/portainer
+    #     description: Docker GUI
+    #     icon: portainer.png
+    #     server: docktopia_socketproxy
+    #     container: portainer
+    #     widget:
+    #         type: portainer
+    #         # url: "http://10.0.31.2:9000"
+    #         url: "https://docktopia.{{HOMEPAGE_VAR_DOMAIN_NAME}}/portainer"
+    #         env: 1
+    #         key: {{HOMEPAGE_FILE_PORTAINER_API_KEY_docktopia}}
+
+    - Traefik - Witchdoctor:
+        icon: traefik.svg
+        href: https://traefik.witchdoctor.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+        description: Traefik Proxy for internal and external services
+        widget:
+           type: traefik
+           url: https://traefik.witchdoctor.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+           username: {{HOMEPAGE_FILE_TRAEFIK_USERNAME}}
+           password: {{HOMEPAGE_FILE_TRAEFIK_PASSWORD}}
+
+- Lights:
+    - Kitchen (WLED):
+        description: Kitchen Ambient lights
+        icon: wled.png
+        href: https://kitchen.wled.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+
+- Services:
+    - Certwarden:
+        description: "Certificate Manager - Witchdoctor"
+        icon: cert-warden-light.svg
+        href: https://certwarden.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+    - NAS:
+        description: "Network Storage - Eatalot (QNAP)"
+        # icon: qnap-alt.png
+        icon: qnap.svg
+        href: https://eatalot.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+
+    - Home Assistant:
+        description: "Home Automation - Dogwood"
+        icon: home-assistant.png
+        href: https://ha.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+    
+    - Brother Printer:
+        description: "Brother Printer DCP-1612W"
+        icon: brother.svg
+        href: http://10.0.22.10"
+
+    - Brother Printer2:
+        description: "Brother Printer DCP-1612W"
+        icon: brother.svg
+        href: http://brother_001.printer.{{HOMEPAGE_VAR_DOMAIN_NAME}}
+

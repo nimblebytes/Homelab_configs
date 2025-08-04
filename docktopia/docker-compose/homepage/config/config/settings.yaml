@@ -1,0 +1,64 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/latest/configs/settings
+
+title: Forest Realm
+startUrl: http://dash.{{HOMEPAGE_VAR_DOMAIN_NAME}}    
+# base: http://dash.{{HOMEPAGE_VAR_DOMAIN_NAME}}        ## Disabled: Breaks widget API connection (currently using Traefik)
+# favicon: https://www.google.com/favicon.ico
+
+
+background:
+  # image: https://images.unsplash.com/photo-1502790671504-542ad42d5189?auto=format&fit=crop&w=2560&q=80
+  # image: /images/unsplash_forest_001.jpg
+  # image: /images/photo-1707408267251-a23626d3bd70.jpg
+  image: /images/photo-1709480919018-5e33592a2d8c.jpg
+  blur: sm                      ## sm, "", md, xl... see https://tailwindcss.com/docs/backdrop-blur
+  saturate: 150                 ## 0, 50, 100... see https://tailwindcss.com/docs/backdrop-saturate
+  brightness: 50                ## 0, 50, 75... see https://tailwindcss.com/docs/backdrop-brightness
+  opacity: 75                   ## 0-100
+
+theme: dark                     ## dark, light
+#color: grey
+
+headerStyle: boxed
+target: _blank                  ## Possible options include _blank, _self, and _top
+
+## Show container stats
+##showStats: true
+
+## Show container status as a dot
+#statusStyle: "dot"
+
+
+layout:
+  Media Players:
+    style: row
+    columns: 4
+  Services:
+    style: row
+    columns: 4
+  Core Network:
+    style: row
+    columns: 4
+  Lights:
+    style: row
+    columns: 4
+  Docker Oversight:
+    style: row
+    columns: 4
+  Containers:
+    style: row
+    columns: 4
+
+## Providers are only used for informational widget, and only for a few supported
+##  - Allows you to define shared API provider options and secrets.
+##  - Pass provider instead of apiKey in your widget configuration.
+providers:
+  openweathermap: {{HOMEPAGE_FILE_OPENWEATHERMAP_API_KEY}}
+  # <provider_name>: <provider_api_setting_or_key>
+
+
+## Hide any API errors
+#hideErrors: true
+

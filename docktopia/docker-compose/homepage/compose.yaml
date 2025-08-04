@@ -1,0 +1,157 @@
+name: "dashboard-homepage"
+
+
+########################### SECRETS
+secrets:
+  bazarr_api:
+    file: ${DOCKER_SECRETS:?}/bazarr_api
+  immich_api:
+    file: ${DOCKER_SECRETS:?}/immich_api_key
+  jellyfin_api:
+    file: ${DOCKER_SECRETS:?}/jellyfin_api
+  navidrome_username:
+    file: ${DOCKER_SECRETS:?}/navidrome_username
+  navidrome_token:
+    file: ${DOCKER_SECRETS:?}/navidrome_token
+  navidrome_salt:
+    file: ${DOCKER_SECRETS:?}/navidrome_salt
+  omada_api_password:
+    file: ${DOCKER_SECRETS:?}/omada_api_password
+  omada_api_site_id:
+    file: ${DOCKER_SECRETS:?}/omada_api_site_id_homepage_widget
+  omada_api_username:
+    file: ${DOCKER_SECRETS:?}/omada_api_username
+  openweathermap_api_key:
+    file: ${DOCKER_SECRETS:?}/openweathermap_api_key
+  opnsense_api_key:
+    file: ${DOCKER_SECRETS:?}/opnsense_api_key
+  opnsense_api_secret:
+    file: ${DOCKER_SECRETS:?}/opnsense_api_secret
+  pihole_api_sharkfin:
+    file: ${DOCKER_SECRETS:?}/pihole_api_sharkfin
+  portainer_api_docktopia:
+    file: ${DOCKER_SECRETS:?}/portainer_api_docktopia
+  prowlarr_api:
+    file: ${DOCKER_SECRETS:?}/prowlarr_api
+  proxmox_user_sharkfin:
+    file: ${DOCKER_SECRETS:?}/proxmox_user_sharkfin  
+  proxmox_password_sharkfin:
+    file: ${DOCKER_SECRETS:?}/proxmox_password_sharkfin
+  proxmox_user_smallbeard:
+    file: ${DOCKER_SECRETS:?}/proxmox_user_smallbeard  
+  proxmox_password_smallbeard:
+    file: ${DOCKER_SECRETS:?}/proxmox_password_smallbeard
+  qbittorrent_user:
+    file: ${DOCKER_SECRETS:?}/qbittorrent_user
+  qbittorrent_password:
+    file: ${DOCKER_SECRETS:?}/qbittorrent_password
+  radarr_api:
+    file: ${DOCKER_SECRETS:?}/radarr_api
+  sonarr_api:
+    file: ${DOCKER_SECRETS:?}/sonarr_api
+  traefik_username:
+    file: ${DOCKER_SECRETS:?}/traefik_homepage_username
+  traefik_password:
+    file: ${DOCKER_SECRETS:?}/traefik_homepage_password
+  weather_location_lat:
+    file: ${DOCKER_SECRETS:?}/weather_location_lat
+  weather_location_long:
+    file: ${DOCKER_SECRETS:?}/weather_location_long
+  weather_location_name:
+    file: ${DOCKER_SECRETS:?}/weather_location_name
+      
+
+########################### NETWORKS
+networks:
+  socketproxy:
+    name: socketproxy
+    external: true
+  proxy:
+    name: proxy
+    external: true
+
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:${IMAGE_TAG:-latest}
+    container_name: ${CONTAINER_NAME:-homepage}
+    restart: unless-stopped
+    networks:
+      - socketproxy                                     ## Connection to docker socket via socketproxy
+      - proxy
+    ports:
+      - "${HOST_IP:?}:3000:3000"
+    volumes:
+      - ${CONTAINER_CONFIG:?}/config:/app/config # Make sure your local config directory exists
+      - ${CONTAINER_CONFIG:?}/images:/app/public/images # Make sure your local image directory exists
+      - ${CONTAINER_VOLUME:?}:/app/config/logs/
+      # - /var/run/user/1000/docker.sock:/var/run/docker.sock # (optional) For docker integrations, see alternative methods in: Homepage>config>docker.yaml
+    environment:
+      PUID: ${PUID_DOCKER}
+      PGID: ${PUID_DOCKER}      
+      HOMEPAGE_FILE_BAZARR_API: "/run/secrets/bazarr_api"
+      HOMEPAGE_FILE_IMMICH_API: "/run/secrets/immich_api"
+      HOMEPAGE_FILE_JELLYFIN_API_KEY: "/run/secrets/jellyfin_api"
+      HOMEPAGE_FILE_NAVIDROME_USERNAME: "/run/secrets/navidrome_username"
+      HOMEPAGE_FILE_NAVIDROME_TOKEN: "/run/secrets/navidrome_token"
+      HOMEPAGE_FILE_NAVIDROME_SALT: "/run/secrets/navidrome_salt"
+      HOMEPAGE_FILE_OMADA_PASSWORD: "/run/secrets/omada_api_password" 
+      HOMEPAGE_FILE_OMADA_SITE: "/run/secrets/omada_api_site_id" 
+      HOMEPAGE_FILE_OMADA_USERNAME: "/run/secrets/omada_api_username" 
+      HOMEPAGE_FILE_OPENWEATHERMAP_API_KEY: "/run/secrets/openweathermap_api_key"
+      HOMEPAGE_FILE_OPNSENSE_API_KEY: "/run/secrets/opnsense_api_key"
+      HOMEPAGE_FILE_OPNSENSE_API_SECRET: "/run/secrets/opnsense_api_secret"
+      HOMEPAGE_FILE_PIHOLE_SHARKFIN_API_KEY: "/run/secrets/pihole_api_sharkfin"
+      HOMEPAGE_FILE_PORTAINER_API_KEY_docktopia: "/run/secrets/portainer_api_docktopia"   ## Lower case in key due to lowercase 'HOSTNAME' expansion in portainer compose file
+      HOMEPAGE_FILE_PROWLARR_API: "/run/secrets/prowlarr_api"
+      HOMEPAGE_FILE_PROXMOX_USER: "/run/secrets/proxmox_user_sharkfin"
+      HOMEPAGE_FILE_PROXMOX_API_KEY: "/run/secrets/proxmox_password_sharkfin"
+      HOMEPAGE_FILE_PROXMOX_SMALLBEARD_USER: "/run/secrets/proxmox_user_smallbeard"
+      HOMEPAGE_FILE_PROXMOX_SMALLBEARD_API_KEY: "/run/secrets/proxmox_password_smallbeard"
+      HOMEPAGE_FILE_QBITTORRENT_USER: "/run/secrets/qbittorrent_user"
+      HOMEPAGE_FILE_QBITTORRENT_PASSWORD: "/run/secrets/qbittorrent_password"
+      HOMEPAGE_FILE_RADARR_API: "/run/secrets/radarr_api"
+      HOMEPAGE_FILE_SONARR_API: "/run/secrets/sonarr_api" 
+      HOMEPAGE_FILE_TRAEFIK_USERNAME: "/run/secrets/traefik_username" 
+      HOMEPAGE_FILE_TRAEFIK_PASSWORD: "/run/secrets/traefik_password"
+      HOMEPAGE_FILE_WEATHER_LOCATION_LAT: "/run/secrets/weather_location_lat"
+      HOMEPAGE_FILE_WEATHER_LOCATION_LONG: "/run/secrets/weather_location_long"
+      HOMEPAGE_FILE_WEATHER_LOCATION_NAME: "/run/secrets/weather_location_name"
+    env_file: 
+      - .env.homepage
+    secrets:
+      - bazarr_api
+      - immich_api
+      - jellyfin_api
+      - navidrome_username
+      - navidrome_token
+      - navidrome_salt
+      - omada_api_password
+      - omada_api_site_id
+      - omada_api_username
+      - openweathermap_api_key
+      - opnsense_api_key
+      - opnsense_api_secret
+      - pihole_api_sharkfin     
+      - portainer_api_docktopia
+      - prowlarr_api
+      - proxmox_user_sharkfin
+      - proxmox_password_sharkfin
+      - proxmox_user_smallbeard
+      - proxmox_password_smallbeard
+      - qbittorrent_user
+      - qbittorrent_password
+      - radarr_api
+      - sonarr_api
+      - traefik_username
+      - traefik_password
+      - weather_location_lat
+      - weather_location_long
+      - weather_location_name
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.entrypoints=https-internal"     ## Only available for the internal network
+      - "traefik.http.routers.homepage.rule=Host(`dash.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/dashboard`))"
+      - "traefik.http.routers.homepage.service=homepage"
+      - "traefik.http.routers.homepage.tls.certresolver=letsencrypt_dns"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"

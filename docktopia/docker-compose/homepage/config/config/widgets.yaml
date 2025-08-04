@@ -1,0 +1,48 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/latest/configs/service-widgets
+
+- logo:
+    # icon: /images/logo.png
+    # icon: /images/forest_icon_01.svg
+    icon: /images/forest_icon_02.png
+    # icon: /images/forest_icon_03.png
+
+- resources:
+    cpu: true
+    memory: true
+    disk: /
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- datetime:
+    text_size: xs  #4xl, 3xl, 2xl, xl, md, sm, xs
+    locale: en-ZA
+    format:
+      dateStyle: short
+      timeStyle: long
+      hourCycle: h23
+
+## openmeteo does not need an API key. No provider defined here or under settings.yaml
+- openmeteo:
+    label: {{HOMEPAGE_FILE_WEATHER_LOCATION_NAME}}      # optional
+    latitude: {{HOMEPAGE_FILE_WEATHER_LOCATION_LAT}} 
+    longitude: {{HOMEPAGE_FILE_WEATHER_LOCATION_LAT}} 
+    timezone: Europe/Berlin # optional
+    units: metric # or imperial
+    cache: 5 # Time in minutes to cache API responses, to stay within limits
+    format: # optional, Intl.NumberFormat options
+      maximumFractionDigits: 1
+
+- openweathermap:
+    label: {{HOMEPAGE_FILE_WEATHER_LOCATION_NAME}}      # optional
+    latitude: {{HOMEPAGE_FILE_WEATHER_LOCATION_LAT}} 
+    longitude: {{HOMEPAGE_FILE_WEATHER_LOCATION_LONG}} 
+    units: metric # or imperial
+    provider: openweathermap
+    # apiKey: youropenweathermapkey # required only if not using provider, this reveals api key in requests
+    cache: 5 # Time in minutes to cache API responses, to stay within limits
+    format: # optional, Intl.NumberFormat options
+      maximumFractionDigits: 1
