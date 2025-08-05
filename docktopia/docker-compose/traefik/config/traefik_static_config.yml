@@ -1,0 +1,172 @@
+## traefik.yml
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+  
+# API and dashboard configuration
+api:
+  dashboard: true                       ## Enable dashboard
+#  insecure: true                         ## Enable access over any URL or Host IP. Need to enable port 8080 as well.
+#  debug: true                            ## Enable api endpoints for debugging
+  disabledashboardad: true              ## Disable the Ad within the dashboard
+
+providers:
+  docker:                               ## Docker provider for dynamic configurations
+    exposedByDefault: false             ## Expose containers by default
+    watch: true                         ## Watch for docker events
+    # ## Socket proxy option (1 of 3). See compose file for other options
+    endpoint: "tcp://dockersocketproxy:2375"  ## socket proxy to use
+    network: proxy                      ## The network name to use for service discovery (do not put the socket proxy on this network)
+
+  file: 
+    directory: /config                  ## File provider for dynamic configuration
+    watch: true                         ## Continuously monitor the folder for changes
+
+
+entrypoints:
+  http-internal:                        ## Network isolation: Entrypoint only for internal network
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: https-internal            ## Name of Entry point to use for redirect
+          scheme: https
+          # permanent: false              ## Make the redirect permanent   
+    
+  https-internal:                       ## Network isolation: Entrypoint only for internal network
+    address: ":443"
+    http:
+      middlewares:
+        - default-headers@file
+        - default-rate-limit@file
+        - ipallowList-homestead@file
+      tls:                              ## Add TLS certs to the Entry point
+        certResolver: letsencrypt       ## Which resolver to use
+        # domains:                        ## Privacy: using docker secrets and env variable (TRAEFIK_ENTRYPOINTS_XXX_HTTP_TLS_DOMAINS_0_MAIN, etc)
+        #   - main: "example.com"       ## Domain/s to use with the Entry point
+        #     sans: 
+        #      - "*.example.com"        ## For testing: Disabled wildcards. Could make it permanent, so that each service gets its own cert and stagger the renewals
+
+    ## forwardedHeaders: Define which IPs, reverse proxies, load balancers (CloudFlare) can add http headers (X-Forwarded-XXX; Forwarded) to connections
+    ## Useful for: 
+    ## - Service behind a reverse proxy
+    ## - Allow Treafik to use (trust) any added header 
+    ## - Headers added by IPs not listed here, will be ignored/removed
+    forwardedHeaders:
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.31.10/32"               ## Traefik - Witchdoctor
+        # - "10.0.31.1/24"                ## DMZ Network
+
+    ## proxyProtocol: Define if PROXY protocol is enabled and used by upstream proxy
+    ## Useful for: 
+    ## - Load balancer sends PROXY protocol headers (Layer 4).
+    ## - Get Traefik to extract the real client IP from the connection metadata
+    ## - Treat connections from IPs not listed here as coming directly from the proxy (not the real client)
+    proxyProtocol:
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.31.10/32"               ## Traefik - Witchdoctor
+        # - "10.0.31.1/24"                ## DMZ Network
+        - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+
+
+  http-external:                       ## Entrypoint for internet reachable service. Must be added to router/firewall
+    address: ":10080"
+    http:
+      redirections:
+        entryPoint:
+          to: ":443"                   ## Redirect client to an explicit port (443) instead of "https_external", otherwise the client will connect on "10443". Port forward rule need on the Router (443 -> 10443), but the router should remap this to 10433.
+          scheme: https
+#          permanent: false             ## Make the redirect permanent
+
+  https-external:                      ## Entrypoint for internet reachable service. Must be added to router/firewall
+    address: ":10443"
+    http:
+      tls:                             ## Add TLS certs to the Entry point
+        certResolver: resolver_le      ## Which resolver to use
+        # domains:                        ## Privacy: using docker secrets and env variable (TRAEFIK_ENTRYPOINTS_XXX_HTTP_TLS_DOMAINS_0_MAIN, etc)
+        #   - main: "example.com"       ## Domain/s to use with the Entry point
+        #     sans: 
+        #      - "*.example.com"        ## For testing: Disabled wildcards. Could make it permanent, so that each service gets its own cert and stagger the renewals
+
+    ## forwardedHeaders: Define which IPs, reverse proxies, load balancers (CloudFlare) can add http headers (X-Forwarded-XXX; Forwarded) to connections
+    ## Useful for: 
+    ## - Service behind a reverse proxy
+    ## - Allow Treafik to use (trust) any added header 
+    ## - Headers added by IPs not listed here, will be ignored/removed
+    forwardedHeaders:
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.31.10/32"               ## Traefik - Witchdoctor
+        # - "10.0.31.1/24"                ## DMZ Network
+        # - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+
+    ## proxyProtocol: Define if PROXY protocol is enabled and used by upstream proxy
+    ## Useful for: 
+    ## - Load balancer sends PROXY protocol headers (Layer 4).
+    ## - Get Traefik to extract the real client IP from the connection metadata
+    ## - Treat connections from IPs not listed here as coming directly from the proxy (not the real client)
+    proxyProtocol:
+      trustedIPs:
+        - "127.0.0.1/32"
+        - "10.0.31.10/32"               ## Traefik - Witchdoctor
+        # - "10.0.31.1/24"                ## DMZ Network
+        # - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+
+    
+    
+certificatesresolvers:
+  letsencrypt_testing: 
+    acme:
+      caserver: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      # email: "<EMAIL@ADDRESS.COM>"   ## Obtained through env variable: TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_TESTING_ACME_EMAIL
+      storage: "/acme.json"
+      tlschallenge: {}
+
+  letsencrypt: 
+    acme:
+      # caserver: "https://acme-staging-v02.api.letsencrypt.org/directory"   ## Disable/Remove to NOT use the staging environment
+      # email: "<EMAIL@ADDRESS.COM>"   ## Obtained through env variable: TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL
+      storage: "/acme.json"
+      tlschallenge: {}
+      
+  letsencrypt_dns: 
+    acme:
+      # caserver: "https://acme-staging-v02.api.letsencrypt.org/directory"   ## Disable/Remove to NOT use the staging environment
+      # email: "<EMAIL@ADDRESS.COM>"   ## Obtained through env variable: TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_DNS_ACME_EMAIL
+      preferredChain:
+      keyType: RSA4096                 ## Options: EC256, EC384, RSA2048, RSA4096, RSA8192
+      storage: /acme.json
+      dnsChallenge:                    ## Use DNS challenge to obtain the SSL cert
+#        provider: godaddy              ## DNS provider controlling the domain name
+        provider: cloudflare
+        propagation:
+          delayBeforeChecks: 30s       ## Delay the ACME-DNS check 
+        resolvers:                     ## Which DNS servers to use FQDN check; Do not use internal DNS, ensure that Firewall has allow rule for Traefik
+          - "1.1.1.1:53"
+          - "9.9.9.9:53"
+          
+          
+## Enable logging of the application
+log:
+  # compress: true               ## Compressed rotated logs using gzip
+  # filePath: /var/log/traefik.log  ## Disabled, so that the logs are export to stdout and available in docker logs
+  format: common               ## Options: json, common
+  level: WARN                  ## Options: DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+
+## Enable logging to the domain/proxy server
+accessLog:
+  addInternals: true           ## Enables logs for internal resources (ping, api, dashboard)
+  bufferingSize: 100           ## How many lines to buffer before writing to log file
+  fields:
+    names:
+      StartUTC: drop           ## Drop UTC, so that the local time and timezone (TZ) is displayed in the access log
+  filePath: /var/log/traefik_access.log
+  filters:
+    statusCodes:               ## Which status code access log to keep
+      - 400-499
+      - 300-399
+      # - 200
+  format: common               ## Options: json, common

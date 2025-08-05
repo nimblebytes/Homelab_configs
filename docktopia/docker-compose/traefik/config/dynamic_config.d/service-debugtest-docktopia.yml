@@ -1,0 +1,21 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    debugtest:                                              ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        # - https-external                                    ## Service is available externally (Internet)
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`test.{{ env "DOMAIN_NAME" }}`)'          ## What rules to match against   
+      priority: 1000                                        ## Lower number are matched first. If not provided the rule length is used as priority
+      service: debugtest_docktopia                          ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+  services:
+    debugtest_docktopia:                                    ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: "http://whoami/"                        ## Internal or external url where to find the service
+      
+
+                  
