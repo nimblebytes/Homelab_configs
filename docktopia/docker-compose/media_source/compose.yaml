@@ -58,8 +58,8 @@ services:
 #    ports:
 #      - 8080:8080  # Must be added to the VPN
     environment:
-      - PUID=${DOCKER_UID}
-      - PGID=${DOCKER_GID}
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
       - TZ=${TZ_VPN:-ETC/UTC}
       - WEBUI_PORT=8080
     volumes:
@@ -71,11 +71,9 @@ services:
       - homepage.name=Qbittorrent
       - homepage.icon=qbittorrent.png
       - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
-      # - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}:8080
       - homepage.description=Entertainment Supplier
       - homepage.widget.type=qbittorrent
       - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
-      # - homepage.widget.url=http://${HOSTNAME:?}.${DOMAIN_NAME:?}:8080
       - homepage.widget.username={{HOMEPAGE_FILE_QBITTORRENT_USER}}
       - homepage.widget.password={{HOMEPAGE_FILE_QBITTORRENT_PASSWORD}}
 
@@ -110,8 +108,8 @@ services:
 #    ports:
 #      - 9696:9696  # Must be added to the VPN
     environment:
-      - PUID=${DOCKER_UID}
-      - PGID=${DOCKER_UID}
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
       - TZ=${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/prowlarr:/config
@@ -146,8 +144,8 @@ services:
 #    ports:
 #      - 7878:7878  # Must be added to the VPN
     environment:
-      - PUID=${DOCKER_UID}
-      - PGID=${DOCKER_UID}
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
       - TZ=${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/radarr:/config
@@ -158,12 +156,10 @@ services:
       - homepage.group=Containers
       - homepage.name=Radarr
       - homepage.icon=radarr.png
-      # - homepage.href=http://${HOSTNAME:?}.${DOMAIN_NAME:?}:7878
       - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
       - homepage.description=Movie Manager
       - homepage.widget.type=radarr
       - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
-      # - homepage.widget.url=http://${HOSTNAME:?}.${DOMAIN_NAME:?}:7878
       - homepage.widget.key={{HOMEPAGE_FILE_RADARR_API}}
       - homepage.widget.enableQueue=false
 
@@ -186,8 +182,8 @@ services:
 #    ports:
 #      - 8989:8989  # Must be added to the VPN
     environment:
-      - PUID=${DOCKER_UID}
-      - PGID=${DOCKER_UID}
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
       - TZ=${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/sonarr:/config
@@ -198,11 +194,9 @@ services:
       - homepage.group=Containers
       - homepage.name=Sonarr
       - homepage.icon=sonarr.png
-      # - homepage.href=http://${HOSTNAME:?}.${DOMAIN_NAME:?}:8989
       - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
       - homepage.description=TV Series Manager
       - homepage.widget.type=sonarr
-      # - homepage.widget.url=http://${HOSTNAME:?}.${DOMAIN_NAME:?}:8989
       - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
       - homepage.widget.key={{HOMEPAGE_FILE_SONARR_API}}
       - homepage.widget.enableQueue=false
