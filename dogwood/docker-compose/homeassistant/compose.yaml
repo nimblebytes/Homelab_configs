@@ -1,0 +1,28 @@
+name: "smart-home"
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:${IMAGE_TAG:-latest}
+    container_name: "${CONTAINER_NAME:-service_name}"
+    # privileged: true
+    # user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}       ## Overrides the user used to run the container process.
+    network_mode: host
+    ports:
+      - ${HOST_IP:?}:8123:8123
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
+      - TZ=${TZ:?}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONTAINER_VOLUME:-./volume_data}:/config
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0  ## Access to the Zigbee Coordinator 
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.router.homeassistant.entrypoint=https-internal"    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      - "traefik.http.router.homeassistant.rule=Host(`ha.${DOMAIN_NAME:-local}`)"
+      - "traefik.http.router.homeassistant.tls.certresolver=letsencrypt_dns" ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      - "traefik.http.router.homeassistant.service=homeassistant"
+      - "traefik.http.services.homeassistant.loadbalancer.server.url=http://${HOST_IP:?}:8123"
