@@ -9,8 +9,8 @@ services:
     image: "deluan/navidrome:${IMAGE_TAG:-latest}"
     container_name: "${CONTAINER_NAME:-navidrome}"
     user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}
-    # networks:
-    #   - proxy
+    networks:
+      - proxy
     ports:
       - "${HOST_IP:?}:4533:4533"
     restart: unless-stopped
