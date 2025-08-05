@@ -1,0 +1,68 @@
+networks:
+  proxy:
+    name: proxy
+    external: true 
+
+secrets:
+  vaultwarden_admin_token:
+    file: ${DOCKER_SECRETS:?}/vaultwarden_admin.token
+  vaultwarden_smtp_email:
+    file: ${DOCKER_SECRETS:?}/smtp_admin_email
+  vaultwarden_smtp_password:
+    file: ${DOCKER_SECRETS:?}/smtp_admin_password
+  vaultwarden_push_id:
+    file: ${DOCKER_SECRETS:?}/bitwarden_install_id
+  vaultwarden_push_key:
+    file: ${DOCKER_SECRETS:?}/bitwarden_install_key
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:${IMAGE_TAG:-latest}
+    container_name: "${CONTAINER_NAME:-vaultwarden}"
+    user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}
+    networks:
+      - proxy
+    ports:
+      - "${HOST_IP:?}:9980:9980"
+    #   # - 9980:9980
+    restart: unless-stopped
+    volumes:
+      - "${CONTAINER_VOLUME:-./volume_data}:/data" 
+    environment:
+      ADMIN_TOKEN_FILE: /run/secrets/vaultwarden_admin_token  ## Loads the admin token via docker secrets
+      DOMAIN: "https://${SERVICE_URL:?}"                 ## Required when using a reverse proxy; your domain; vaultwarden needs to know it's https to work properly with attachments
+      SIGNUPS_ALLOWED: "false"                           ## Deactivate with "false" after you have created your account so that no strangers can register
+      PUSH_INSTALLATION_ID_FILE: /run/secrets/vaultwarden_push_id
+      PUSH_INSTALLATION_KEY_FILE: /run/secrets/vaultwarden_push_key
+      ROCKET_PORT: "9980"
+      SMTP_FROM: ${SMTP_FROM:?}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:?}
+      SMTP_HOST: "${SMTP_HOST:?}"
+      SMTP_PASSWORD_FILE: /run/secrets/vaultwarden_smtp_password
+      SMTP_USERNAME_FILE: /run/secrets/vaultwarden_smtp_email
+      TZ: ${TZ}
+      
+    env_file: 
+      - .env.vaultwarden
+    secrets:
+      - vaultwarden_admin_token 
+      - vaultwarden_smtp_email
+      - vaultwarden_smtp_password
+      - vaultwarden_push_id 
+      - vaultwarden_push_key
+
+    labels:
+
+      - homepage.group=Services
+      - homepage.name=Vaultwarden
+      - homepage.icon=vaultwarden-light.png
+      - homepage.href=https://vault.${DOMAIN_NAME:?}
+      - homepage.description=Password Manager & 2FA
+
+      - "traefik.enable=true"
+      # - "traefik.http.routers.vaultwarden.entrypoints=https-internal"
+      - "traefik.http.routers.vaultwarden.entrypoints=https-external,https-internal"
+      - "traefik.http.routers.vaultwarden.rule=Host(`${SERVICE_URL:-vaultwarden.local}`) || Host(`vault.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`)"
+      - "traefik.http.routers.vaultwarden.service=vaultwarden"
+      - "traefik.http.routers.vaultwarden.tls.certresolver=letsencrypt_dns"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=9980"
