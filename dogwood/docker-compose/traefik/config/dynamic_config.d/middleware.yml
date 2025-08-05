@@ -1,0 +1,54 @@
+http:
+  middlewares:
+    auth-basic-traefik:
+      basicAuth:
+        realm: "Forest Realm"
+        usersFile: "/shared/.htpasswd"   ## be sure to mount the volume through docker-compose.yml, and remove the mount if not needed
+
+    default-headers:
+      headers:
+#        accessControlAllowMethods: ["GET", "OPTIONS", "PUT"]
+#        accessControlMaxAge: 100
+#        hostsProxyHeaders: ["X-Forwarded-Host"]
+
+        frameDeny: true                  ## If true, disallow loading within iFrame; Overwritten by customFrameOptionsValue
+        browserXssFilter: true           ## If true, enable XSS filtering will block page load if an attack is detected
+        contentTypeNosniff: true         ## If true, force the browser to accept the set content type, and not tray and guess it
+        forceSTSHeader: true             ## If true, add the STS header even when the connection is HTTP. Inform browsers to use HTTPS in the future
+        referrerPolicy: "same-origin"    ## What information to include in the 'Referer' header; 
+        stsIncludeSubdomains: true       ## If true, inform the browser to use HTTPS for subdomains in the future too
+        stsPreload: true                 ## If true, use the preload service from Google
+        stsSeconds: 63072000             ## 1 year minimum (31536000) required for Preload, recommended 2 years 
+        customFrameOptionsValue: SAMEORIGIN
+#        customFrameOptionsValue: "allow-from https://${DOMAIN_NAME:?}"
+###   Setting contentSecurityPolicy is more secure but it can break things. Proper auth will reduce the risk.
+###   the below line also breaks some apps due to 'none' - sonarr, radarr, etc.
+#      contentSecurityPolicy = "frame-ancestors '*.$DOMAIN_NAME:*';object-src 'none';script-src 'none';"
+        permissionsPolicy:
+          - "camera 'none'"
+          - "geolocation 'none'"
+          - "microphone 'none'"
+          - "payment 'none'"
+          - "usb 'none'"
+          - "vr 'none'" 
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+#        customResponseHeaders:
+#          X-Robots-Tag: "none,noarchive,nosnippet,notranslate,noimageindex,"
+#          server: ""
+
+
+    default-rate-limit:
+      rateLimit:
+        average: 1000                    ## Maximum request rate from a given source
+        burst: 5000                      ## Burst rate for requests for a small period
+    
+    ipallowList-homestead:
+      #ipWhiteList:
+      ipAllowList:
+        sourcerange:
+          - 192.168.1.0/24               ## Router network
+          - 10.0.15.0/24                 ## Home (apartment) network
+#          - 10.0.30.0/24                 ## Management network  
+          - 10.0.31.0/24                 ## DMZ network
+          - 10.0.99.0/24                 ## Default LAN network
