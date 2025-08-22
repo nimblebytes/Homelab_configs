@@ -4,8 +4,6 @@ name: "Certwarden"
 networks:
   proxy:
     external: true
-  # default:
-    # driver: bridge
 
 ########################### SERVICES
 services:
@@ -15,8 +13,7 @@ services:
     user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}
     restart: unless-stopped
     networks:
-      - proxy
-      # - default
+      proxy: {}
     ports:
       - 4050:4050 # server interface (http)
       - 4055:4055 # server interface (https)
@@ -27,9 +24,9 @@ services:
       - "${CONTAINER_VOLUME:-./volume_data}:/app/data" 
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.certwarden.entrypoints=https-internal"    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
-      - "traefik.http.routers.certwarden.rule=Host(`${CONTAINER_NAME:-certwarden}.${DOMAIN_NAME:-local}`)"
-      - "traefik.http.routers.certwarden.tls.certresolver=letsencrypt_dns" ## letsencrypt; letsencrypt_dns; letsencrypt_testing
-      - "traefik.http.routers.certwarden.service=certwarden"
-      - "traefik.http.services.certwarden.loadbalancer.server.url=http://${CONTAINER_NAME:-certwarden}:4050"
+      traefik.enable: "true"
+      traefik.http.routers.certwarden.entrypoints: https-internal    ## https-internal; or https-external; or addtional traefik router/s needed for different config
+      traefik.http.routers.certwarden.rule: Host(`${CONTAINER_NAME:-certwarden}.${DOMAIN_NAME:-local}`)
+      traefik.http.routers.certwarden.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.certwarden.service: certwarden
+      traefik.http.services.certwarden.loadbalancer.server.url: http://${CONTAINER_NAME:-certwarden}:4050
