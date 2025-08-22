@@ -5,7 +5,6 @@ networks:
   security:
     external: true
 
-
 ########################### SERVICES
 services:
   crowdsec:
@@ -13,8 +12,7 @@ services:
     container_name: "${CONTAINER_NAME:-crowdsec}"
     restart: unless-stopped
     networks:
-      - security
-
+      security: {}
     expose:
       - "8080"
     environment: 
@@ -37,4 +35,4 @@ services:
       - "${CONTAINER_VOLUME:?}/db:/var/lib/crowdsec/data"             ## CrowdSec SQLite DB Folder
       
     labels:
-      - "traefik.enable=false"
+      traefik.enable: "false"
