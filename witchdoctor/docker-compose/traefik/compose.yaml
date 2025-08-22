@@ -1,0 +1,145 @@
+name: traefik_stack
+
+########################### NETWORKS
+networks:
+  socketproxy:
+    external: true
+  proxy:
+    name: proxy
+    driver: bridge
+    # attachable: true
+    ipam:
+      config:
+        - subnet: 172.27.0.0/24 
+          ip_range: 172.27.0.0/24
+          gateway: 172.27.0.1
+          # aux_addresses:                                              ## IP Address already in use
+          #   RESERVED_02: 172.27.0.2                                   ## Container_Name:IP
+          #   RESERVED_03: 172.27.0.3
+    labels:
+      - "internal.docker.network.description=Proxy network for container services (${HOSTNAME:?})"   
+  security:                                                             ## Security services: Authelia, Authentik, CrowdSec
+    external: true
+
+########################### SECRETS
+secrets:
+  acme_email:
+    file: ${DOCKER_SECRETS:?}/acme_email_admin
+  cloudflare_email:
+    file: ${DOCKER_SECRETS:?}/cloudflare_email
+  cloudflare_api_key:
+    file: ${DOCKER_SECRETS:?}/cloudflare_api_witchdoctor
+  crowdsec_bouncer_key:
+    file: ${DOCKER_SECRETS:?}/crowdsec_witchdoctor_traefik_bouncer
+
+########################### SERVICES
+services:
+  traefik:
+    image: "traefik:${IMAGE_TAG_TRAEFIK:-latest}"
+    container_name: "${CONTAINER_NAME:-traefik}"
+    restart: unless-stopped
+    networks:
+      proxy:
+        ipv4_address: 172.27.0.2                                      ## Needs to be static IP, for configs in other containers to trust forwarded headers
+      security: {}                                                    ## Dynamic IP
+      socketproxy: {}
+    ports:
+      - "80:80"                                                       ## http-internal
+      - "443:443"                                                     ## https-internal
+      # - "8080:8080"                                                   ## Traefik API/Dashboard. Not needed as there is a rule to access the Dashboard
+      - "10080:10080"                                                 ## http-external 
+      - "10443:10443"                                                 ## https-external
+    depends_on:
+      error-pages: {condition: service_healthy}
+    ## File containing environment variables to be inserted into the container
+    env_file: 
+      - .env.traefik     
+    environment: 
+      - PUID=${PUID_DOCKER:?}
+      - PGID=${PGID_DOCKER:?}
+      - TZ=${TZ:?}
+
+      ## Secrets: NOT in .env.traefik file to make it more visible and easier to manage 
+      - CF_API_EMAIL_FILE=/run/secrets/cloudflare_email
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/cloudflare_api_key         ## API token with DNS:Edit permission
+      - CROWDSECBOUNCERKEY_FILE=/run/secrets/crowdsec_bouncer_key     ## Crowdsec secret
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=/run/secrets/acme_email    ## Email used for ACME certs via TLS challange
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_DNS_ACME_EMAIL=/run/secrets/acme_email    ## Email used for ACME certs via DNS challange
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_TESTING_ACME_EMAIL=/run/secrets/acme_email    ## Email used for staging/testing ACME certs without hiting rate limits (via DNS challange)
+      
+    volumes:
+      ## Option 1: Using socker proxy defined in the static config file
+      ## Option 2 & 3: Direct socket access root or rootless
+      # - ${DOCKER_SOCK:?}:/var/run/docker.sock                       ## (Option 2/3) Docker rootful/rootless socket determined and exported in .bashrc
+      
+      #### Config files/folders to control traefik 
+      - "${CONTAINER_CONFIG:?}/traefik_static_config.yml:/traefik.yml:ro"
+      - "${CONTAINER_CONFIG:?}/dynamic_config.d:/config:ro"
+
+      #### Dynamic files/folders modified by traefik
+      - "${CONTAINER_VOLUME:?}/acme.json:/acme.json"      
+      - "${CONTAINER_VOLUME:?}/traefik_access.log:/var/log/traefik_access.log"
+      # - "${CONTAINER_VOLUME:?}/traefik.log:/var/log/traefik.log"      ## Disabled within "traefik.yml" config file, so that logs are viewable/accessible through Docker logs or Portainer.
+      - "${DOCKER_SECRETS}/.htpasswd:/shared/.htpasswd"               ## Only needed for the "auth-basic-traefik" middleware in the dynamic config; breaks services if needed and not present. Double check config, else remove.
+    secrets:
+      - acme_email
+      - cloudflare_email
+      - cloudflare_api_key
+      - crowdsec_bouncer_key
+      
+    labels:
+      # Traefik Dashboard
+      traefik.enable: "true"
+      traefik.http.routers.traefik.rule: Host(`traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`) 
+      traefik.http.routers.traefik.entrypoints: https-internal        ## Only available for the internal network
+      traefik.http.routers.traefik.service: api@internal
+      traefik.http.routers.traefik.tls.certresolver: letsencrypt_dns  ## Options: letsencrypt_testing; letsencrypt; letsencrypt_dns 
+      traefik.http.routers.traefik.tls.domains[0].main: traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}
+      # traefik.http.routers.traefik.tls.domains[0].sans: *.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}
+      traefik.http.routers.traefik.middlewares: auth-basic-traefik@file,errorpages@file
+
+  error-pages:
+    image: ghcr.io/tarampampam/error-pages:${IMAGE_TAG_ERRORPAGES:-latest}
+    container_name: "error-pages"
+    security_opt: [no-new-privileges:true]
+    networks:
+      proxy:
+        ipv4_address: 172.27.0.3                                      ## Static IP due to startup dependance. Ensure that Traefik is given their requested IP
+    restart: unless-stopped
+    ## File containing environment variables to be inserted into the container
+    env_file: 
+      - .env.errorpages
+    environment:
+      TZ: ${TZ:-Europe/Berlin}    
+    labels:
+      traefik.enable: "false"                                         ## Do not enable Traefik. Startup sequence/dependancies results in middleware errors and alert in dashboard
+      ## Below labels are only for documentation completeness
+      ## Label configurtion when there are no startup dependancies. Can lead to certificate warning and creation of duplicate middleware and services
+      # traefik.http.routers.error-pages-router.entrypoints: https-external,https-internal   ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      # traefik.http.routers.error-pages-router.rule: HostRegexp(`.+`)        ## use as "fallback" for any NON-registered services (with priority below normal)
+      # traefik.http.routers.error-pages-router.priority: 1
+      # traefik.http.routers.error-pages-router.middlewares: error-pages-middleware
+      # # "errors" middleware settings
+      # traefik.http.middlewares.error-pages-middleware.errors.status: 400-599
+      # traefik.http.middlewares.error-pages-middleware.errors.service: error-pages-service
+      # traefik.http.middlewares.error-pages-middleware.errors.query: /{status}.html
+      # # define service properties
+      # traefik.http.services.error-pages-service.loadbalancer.server.port: 8080
+      
+
+  whoami:
+    image: traefik/whoami:v1.10.2
+    container_name: "whoami"
+    depends_on:
+      - traefik
+    networks:
+      proxy: {}
+    labels:
+      traefik.enable: "true"
+      # traefik.http.routers.whoami.rule: Host(`whoami.${HOSTNAME:?}.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))
+      traefik.http.routers.whoami.rule: Host(`whoami.${HOSTNAME:?}.${DOMAIN_NAME:?}`)
+      # traefik.http.routers.whoami.priority: 5
+      traefik.http.routers.whoami.entrypoints: https-internal         ## Only available for the internal network
+      traefik.http.routers.whoami.tls.certresolver: letsencrypt_dns
+      traefik.http.services.whoami.loadbalancer.server.url: "http://whoami:80"  ## (Optional) Use 'url' label to make the service more visible in the log files
+     
