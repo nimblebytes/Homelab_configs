@@ -1,0 +1,32 @@
+name: "Certwarden"
+
+########################### NETWORKS
+networks:
+  proxy:
+    external: true
+
+########################### SERVICES
+services:
+  certwarden:
+    image: ghcr.io/gregtwallace/certwarden:${IMAGE_TAG:-latest}
+    container_name: "${CONTAINER_NAME:-certwarden}"
+    user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}
+    restart: unless-stopped
+    networks:
+      proxy: {}
+    ports:
+      - 4050:4050 # server interface (http)
+      - 4055:4055 # server interface (https)
+      - 4060:4060 # http-01 challenge server (http)
+      - 4065:4065 # pprof debug server (http)
+      - 4070:4070 # pprof debug server (https)
+    volumes:
+      - "${CONTAINER_VOLUME:-./volume_data}:/app/data" 
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.certwarden.entrypoints: https-internal    ## https-internal; or https-external; or addtional traefik router/s needed for different config
+      traefik.http.routers.certwarden.rule: Host(`${CONTAINER_NAME:-certwarden}.${DOMAIN_NAME:-local}`)
+      traefik.http.routers.certwarden.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.certwarden.service: certwarden
+      traefik.http.services.certwarden.loadbalancer.server.url: http://${CONTAINER_NAME:-certwarden}:4050

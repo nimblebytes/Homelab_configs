@@ -1,0 +1,11 @@
+tls:
+  stores:
+    default:
+      defaultGeneratedCert:
+        resolver: letsencrypt_dns                           ## letsencrypt; letsencrypt_dns; letsencrypt_test
+        domain:
+          main: '{{ env "DOMAIN_NAME" }}'                   ## Obtain a certification for the main Domain
+          sans:
+            - 'debug.{{ env "DOMAIN_NAME" }}'
+            - 'test.{{ env "DOMAIN_NAME" }}'
+            - 'www.{{ env "DOMAIN_NAME" }}'

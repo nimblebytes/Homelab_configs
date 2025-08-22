@@ -1,0 +1,21 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    homepage:                                               ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`dash.{{ env "DOMAIN_NAME" }}`)'          ## What rules to match against        
+      # priority: 200                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: homepage_docktopia                           ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+
+  services:
+    homepage_docktopia:                                     ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: 'https://docktopia:443'                    ## Internal or external url where to find the service
+        serversTransport: st_https_docktopia                ## Need a specific server transport config, as the backend server is only reachable over HTTPS
+               
+                  

@@ -1,0 +1,28 @@
+##----------------------------------------------------------------------------
+## serversTransports - supported via providers.file and not providers.docker 
+## i.e. cannot be dynamically configured via docker labels
+## 
+## Best to restart Traefik if changes are made here
+##----------------------------------------------------------------------------
+http:                                                       ## http service (options: http, tcp,  udp)  
+  serversTransports:
+    st_http_docktopia:                                      ## Name of the server transport
+      insecureSkipVerify: true
+      serverName: 'docktopia.{{ env "DOMAIN_NAME" }}'       ## Define the server name that will be used for SNI. Domain needs to be included 
+
+    st_https_docktopia:                                     ## Name of the server transport
+      # insecureSkipVerify: true                              ## Testing only: Do not verify server's certificate chain and host name
+      insecureSkipVerify: false                             ## Verify certificate chain and host name. Set to "true" for self-signed certs 
+      serverName: 'docktopia.{{ env "DOMAIN_NAME" }}'       ## Define the server name that will be used for SNI. Domain needs to be included     
+
+    st_https_dogwood:                                       ## Name of the server transport
+      insecureSkipVerify: false                             ## Verify certificate chain and host name. Set to "true" for self-signed certs 
+      serverName: 'dogwood.{{ env "DOMAIN_NAME" }}'         ## Define the server name that will be used for SNI. Domain needs to be included
+
+    st_https_eatalot:                                       ## Name of the server transport
+      insecureSkipVerify: false                             ## Verify certificate chain and host name. Set to "true" for self-signed certs 
+      serverName: '{{ env "CUSTOM_URL_NAS_PUBLIC_FILE" }}'  ## Server name and 3rd party domain on certificate
+
+    st_https_nas_3p_external:                               ## Name of the server transport
+      insecureSkipVerify: false                             
+      serverName: '{{ env "CUSTOM_URL_NAS_PUBLIC_FILE" }}'  ## Server name and 3rd party domain on certificate

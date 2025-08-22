@@ -1,0 +1,30 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    vaultwarden_external:                                   ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-external                                    ## Seperate entry point for external (Internet) connections
+      ##  Rule to match against. Explicitily, do not allow access to the '/admin' page
+      rule: 'Host(`vault.{{ env "DOMAIN_NAME" }}`) && !PathPrefix(`/admin`)'  
+      # priority: 200                                        ## Lower number are matched first. If not provided the rule length is used as priority
+      service: traefik-docktopia                            ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+
+    vaultwarden_internal:    
+      entryPoints:                       
+        - https-internal                                    ## Seperate entry point for internal connections
+      rule: 'Host(`vault.{{ env "DOMAIN_NAME" }}`)'         ## What rules to match against  
+      # priority: 200                     
+      service: traefik-docktopia         
+      tls:
+        certResolver: letsencrypt_dns       
+
+  services:
+    traefik-docktopia:                                      ## Name of the service 
+      loadBalancer:
+        servers:                         
+          # - url: "http://docktopia:9980/"                 ## Direct connection to vaultwarden
+          - url: "https://docktopia:443/"                   ## Proxy connection securely 
+        serversTransport: st_https_docktopia                ## Need to specify a specific server transport config, as the backend server is reachable over HTTPS only  

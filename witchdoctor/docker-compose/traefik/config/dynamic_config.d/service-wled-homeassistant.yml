@@ -1,0 +1,34 @@
+##----------------------------------------------------------------------------
+## Special rule for an extreme edge-case:
+## For a widget inside HomeAssistant 
+## To show the current output of a WLED light on a widget inside HomeAssistant
+## requests are routed via the HomeAssistant domain to the actual domain/IP
+## of the light.
+##----------------------------------------------------------------------------
+
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    kitchen-wled:                                           ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-internal                                    ## Service is available internally
+      middlewares: stripprefex_wled_kitchen@file
+      rule: 'Host(`ha.{{ env "DOMAIN_NAME" }}`) && PathPrefix(`/wled/kitchen`)' ## What rules to match against  
+      priority: 5000                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: kitchen-wled-via-ha-domain                   ## The name of the service to link to (see below)
+      tls:         
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+ 
+  middlewares:
+    stripprefex_wled_kitchen:
+      stripPrefix:
+        prefixes:
+          - "/wled/kitchen/"    
+
+  services:
+    kitchen-wled-via-ha-domain:                             ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: "http://10.0.22.30:80/"                    ## IP of WLED device
+                

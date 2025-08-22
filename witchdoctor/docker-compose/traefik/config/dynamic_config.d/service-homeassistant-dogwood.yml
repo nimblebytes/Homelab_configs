@@ -1,0 +1,21 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    homeassistant:                                          ## Name of the router
+      entryPoints:                       
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`ha.{{ env "DOMAIN_NAME" }}`)'            ## What rules to match against
+      # priority: 200                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: https-traefik-dogwood
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+        
+  services:
+    https-traefik-dogwood:                                  ## Name of the service 
+      loadBalancer:
+        servers:                       
+          # - url: 'http://dogwood:8123/'                     ## Direct connection to HomeAssistant
+          - url: 'https://dogwood:443/'                     ## Proxy connection securely
+        serversTransport: st_https_dogwood                  ## Need to specify a specific server transport config, as the backend server is reachable over HTTPS only          
+          
+                

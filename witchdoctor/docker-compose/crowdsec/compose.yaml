@@ -1,0 +1,38 @@
+name: crowdsec_stack
+
+########################### NETWORKS
+networks:
+  security:
+    external: true
+
+########################### SERVICES
+services:
+  crowdsec:
+    image: "crowdsecurity/crowdsec:${IMAGE_TAG:-latest-debian}"
+    container_name: "${CONTAINER_NAME:-crowdsec}"
+    restart: unless-stopped
+    networks:
+      security: {}
+    expose:
+      - "8080"
+    environment: 
+      GID: "${PGID_DOCKER:?}"                     ## CrowdSec Container uses GID and not PGID
+      TZ: "${TZ:?}"
+
+    ## File containing environment variables to be inserted into the container
+    env_file: 
+      - .env.crowdsec     
+      
+    volumes:
+      #### Config files for setting that the user should only edit
+      - "${CONTAINER_CONFIG:?}/acquis.d:/etc/crowdsec/acquis.d:ro"    ## Acquisition folder which defines which logs to ingest. https://docs.crowdsec.net/docs/concepts/#acquisition⁠
+
+      #### Log files to be used by CrowdSec for processing. N.B. If adding more sources, add the log type parser file inside the 'acquis.d' folder
+      - "${DOCKER_VOLUMES:?}/traefik/:/var/log/traefik:ro"            ## Traefik log file
+
+      #### Dynamic files/folders used by CrowdSec
+      - "${CONTAINER_VOLUME:?}/config:/etc/crowdsec/"                 ## Config and credentials folder for Crowdsec
+      - "${CONTAINER_VOLUME:?}/db:/var/lib/crowdsec/data"             ## CrowdSec SQLite DB Folder
+      
+    labels:
+      traefik.enable: "false"

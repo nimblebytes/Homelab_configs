@@ -1,0 +1,30 @@
+##----------------------------------------------------------------------------
+## Special rule for an extreme edge-case: For a widget inside HomeAssistant 
+##  - To show the current output of a WLED light on a widget inside 
+##    HomeAssistant, requests are routed via the HomeAssistant domain to the 
+##    actual domain/IP of the light.
+##----------------------------------------------------------------------------
+
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    kitchen-wled-alternative:                               ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`kitchen.wled.{{ env "DOMAIN_NAME" }}`)'  ## What rules to match against  
+      # priority: 200                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: kitchen-wled-own-domain                      ## The name of the service to link to (see below)
+      tls:         
+        certResolver: letsencrypt_dns                       ## Which resolver to use
+        domains:                                            ## Domain/s to use with the Entry point
+          - main: 'wled.{{ env "DOMAIN_NAME" }}'            ## Parent cert for WLED installation
+            sans: 
+             - '*.wled.{{ env "DOMAIN_NAME" }}'             ## Use wildcard certs for all indidivual installation, to prevent rate limits by LetsEncrypt 
+
+  services:
+    kitchen-wled-own-domain:                                ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: "http://10.0.22.30:80/"                    ## IP of WLED device
+                
