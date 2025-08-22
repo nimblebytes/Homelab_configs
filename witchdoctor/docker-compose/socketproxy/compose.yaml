@@ -2,30 +2,36 @@
 networks:
   socketproxy:
     name: socketproxy
-    driver: bridge
+    internal: true
     ipam:
       config:
         - subnet: 172.31.0.0/24
+          ip_range: 172.31.0.0/24
+          # gateway: 172.31.1.1
+          # aux_addresses:                                  ## IP Address already in use
+          #   RESERVED_02: 172.31.0.2
+    labels:
+      - "internal.docker.network.description=Docker socket network (${HOSTNAME:-Hostname missing})"          
                 
 
 ########################### Services     
 services:
   ## Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
   dockersocketproxy:
-    container_name: ${CONTAINER_NAME_SOCKETPROXY:-socketproxy}
+    container_name: ${CONTAINER_NAME_SOCKETPROXY:-dockersocketproxy}
     image: ghcr.io/tecnativa/docker-socket-proxy:${IMAGE_TAG_SOCKETPROXY:-latest}
     restart: unless-stopped
     networks:
-      - socketproxy
+      socketproxy: {}
     security_opt:
       - no-new-privileges:true
-    ports:
-      - "2375:2375"
-    # - "127.0.0.1:2375:2375" # Port 2375 should only ever get exposed to the internal network. When possible use this line.
-    # I use the next line instead, as I need portainer to manage multiple docker endpoints within my home network.
-    # - "2375:2375"
+    # ports:                                                  ## No ports need to be openned, if used in an docker network
+      # - "127.0.0.1:2375:2375"                               ## Safer: Expose port 2375 should only exposed to the local host
+      # - "2375:2375"                                         ## Danger: Expose port 2375 to the (local) network only with proper firewall rules in place
+
     volumes:
-      - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock
+      - ${DOCKER_SOCK:?}:/var/run/docker.sock               ## Docker rootful/rootless socket determined and exported in .bashrc        
+      
     environment:
       - LOG_LEVEL=info # debug,info,notice,warning,err,crit,alert,emerg
       ## Grant access=1; revoke=0
