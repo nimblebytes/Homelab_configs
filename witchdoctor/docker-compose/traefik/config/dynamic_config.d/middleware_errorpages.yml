@@ -1,0 +1,29 @@
+http:
+  # routers:
+  #   errorpages:                                                ## Name of the router
+  #     entryPoints:                       
+  #     ## List of entry points to match against 
+  #     ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+  #       - https-internal                                    ## Service is available internally
+  #       - https-external                                    ## Service is available externally (internet)
+  #     middlewares: errorpages
+  #     rule: HostRegexp(`.+`)                                ## What rules to match against
+  #     priority: 1                                           ## Lower number are matched first. If not provided the rule length is used as priority
+  #     # service: errorpages                                   ## The name of the service to link to (see below)
+
+
+
+  middlewares:
+    errorpages:
+      errors:
+        status:
+          - "400-499"
+          - "500-599"
+        service: errorpages                       ## Update this line if the container is changed, or its traefik label
+        query: "/{status}.html"
+
+  services:
+    errorpages:                                             ## Name of the service 
+      loadBalancer:
+        servers:
+          - url: "http://error-pages:8080"                  ## Proxy connection securely         

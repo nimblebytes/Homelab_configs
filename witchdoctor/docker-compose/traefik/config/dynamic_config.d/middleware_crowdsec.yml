@@ -1,0 +1,32 @@
+http:
+  middlewares:
+    crowdsec:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO                                    # Options: DEBUG, INFO, ERROR
+          httpTimeoutSeconds: 10
+          updateIntervalSeconds: 60                         # Used only in "stream" mode, the interval between requests to fetch blacklisted IPs from LAPI
+          updateMaxFailure: 0                               # Used only in "stream" and "alone" mode, the maximum number of time we can not reach Crowdsec before blocking traffic (set -1 to never block)
+          defaultDecisionSeconds: 60                        # Used only in "live" mode, maximum decision duration
+          ## AppSec - Disable Crowdsec IP checking but apply Crowdsec Appsec checking. This mode is intended to be used when Crowdsec IP checking is applied at the Firewall Level.
+          crowdsecMode: live                                # Options: none, live, stream, alone, appsec
+          crowdsecAppsecEnabled: false
+          crowdsecAppsecHost: crowdsec:7422                 # Enable AppSec
+          crowdsecAppsecFailureBlock: true                  # Block requests if the CrowdSec server reports an error occurred in the application security component
+          crowdsecAppsecUnreachableBlock: true              # Block requests if the Crowdsec server is not reachable
+          crowdsecLapiHost: 10.0.31.1:8081
+          crowdsecLapiKeyFile: /run/secrets/crowdsec_bouncer_key
+          # CrowdsecLapiKey: {{ env "CROWDSECBOUNCERKEY_FILE" | printf "%s" }}   # Expand the variable via GO Templating. Prints the variable not the file
+          # CrowdsecLapiKey: {{ env "CROWDSECBOUNCERKEY" }}   # Expand the variable via GO Templating. Echos the variable
+          crowdsecLapiScheme: http
+          forwardedHeadersTrustedIPs:                       # List of IPs of trusted Proxies that are in front of traefik (ex: Cloudflare
+            - 10.0.31.2/32                                  # Traefik - Docktopia
+            - 10.0.31.10/32                                 # Traefik - Witchdoctor
+            - 10.0.32.12/32                                 # Traefik - Dogwood
+          clientTrustedIPs:                                 # List of client IPs to trust, they will bypass any check from the bouncer or cache
+            - 10.0.99.0/24                                  # Lan VLAN - Anti-lockout rule
+            # - 10.0.15.0/24                                  # WE5 VLAN - Anti-lockout rule
+          forwardedHeadersCustomName: X-Custom-Header
+          banHTMLFilePath: ""
+          # banHTMLFilePath: /ban.html

@@ -1,0 +1,31 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    immich:                                                 ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        # - https-external                                    ## Service is available externally (internet)
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`photobook.{{ env "DOMAIN_NAME" }}`) || Host(`immich.{{ env "DOMAIN_NAME" }}`)'  ## What rules to match against  
+      # priority: 200                                       ## Lower number are matched first. If not provided the rule length is used as priority
+      service: traefik-docktopia                            ## Service name from Vaultwarden config
+      # service: immich-docktopia                             ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+
+  services:
+    immich-docktopia:                                       ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: "http://docktopia:2283/"                   ## Direct connection to immich
+          # - url: 'https://docktopia:443/'                   ## Proxy connection securely  
+        # serversTransport: st_https_docktopia                ## Need to specify a specific server transport config, as the backend server is reachable over HTTPS only               
+        # serversTransport: st_immich_docktopia                ## Need to specify a specific server transport config, as the backend server is reachable over HTTPS only               
+
+## Testing if it makes a difference where the serverTransports are defined
+## i.e. are they reloaded if if changed or are static (loaded once) even if in a dynamic config file
+  serversTransports:
+    st_immich_docktopia:                                      ## Name of the server transport
+      insecureSkipVerify: true
+      # serverName: 'docktopia.{{ env "DOMAIN_NAME" }}'       ## Define the server name that will be used for SNI. Domain needs to be included         
+      serverName: 'docktopia'       ## Define the server name that will be used for SNI. Domain needs to be included         

@@ -1,0 +1,23 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    navidrome:                                              ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-external                                    ## Service is available externally (internet)
+        - https-internal                                    ## Service is available internally
+      rule: 'Host(`music.{{ env "DOMAIN_NAME" }}`)'         ## What rules to match against     
+      # priority: 200                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: traefik-docktopia                            ## Service name from Vaultwarden config
+      # service: navidrome-docktopia                          ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use
+
+## TODO: Unresolve - why does using Vaultwarden service work, but different name/same setting not work here        
+  services:
+    navidrome-docktopia:                                    ## Name of the service 
+      loadBalancer:
+        servers:                         
+          - url: "http://docktopia:4533/"                   ## Direct connection to navidrome
+          # - url: "http://docktopia:443/"                    ## Proxy connection securely
+        serversTransport: st_https_docktopia                ## Need to specify a specific server transport config, as the backend server is reachable over HTTPS only  
