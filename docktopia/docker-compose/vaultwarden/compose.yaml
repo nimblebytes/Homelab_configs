@@ -1,8 +1,12 @@
+name: vaultwarden_stack
+
+########################### NETWORKS
 networks:
   proxy:
     name: proxy
     external: true 
 
+########################### Secrets
 secrets:
   vaultwarden_admin_token:
     file: ${DOCKER_SECRETS:?}/vaultwarden_admin.token
@@ -15,35 +19,51 @@ secrets:
   vaultwarden_push_key:
     file: ${DOCKER_SECRETS:?}/bitwarden_install_key
 
+########################### Docker Services
 services:
   vaultwarden:
     image: vaultwarden/server:${IMAGE_TAG:-latest}
     container_name: "${CONTAINER_NAME:-vaultwarden}"
-    user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}
+    user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}                           ## Needed due to folder permissions of mounted media folders, even on Docker Rootlerss install
     networks:
-      - proxy
-    ports:
-      - "${HOST_IP:?}:9980:9980"
-    #   # - 9980:9980
+      proxy: {}
+    
+    ## Port Configuration:
+    ## Vaultwarden requires HTTPS to work unless localhost/127.0.0.1 is used
+    ##  - https://github.com/dani-garcia/vaultwarden?tab=readme-ov-file#usage
+    ##  - https://github.com/dani-garcia/vaultwarden/discussions/5486
+    ##  - https://github.com/dani-garcia/vaultwarden/discussions/5596
+    ##  - Exposing on "${HOST_IP:?}:9980:80" is pointless and results in
+    ##    just showing the Vaultwarden loading screen
+    ##  - Must use a external/local reverse proxy with a cetificate
+    ## 
+    ## Valutwarden has an internal proxy (Rocket Proxy) to handle PORT:PORT
+    ## translation internally. This must be considered when setting up the
+    ## external/local reverse proxy.
+    ##  - https://github.com/dani-garcia/vaultwarden/wiki/Proxy-examples
+    ##  - Refer to Rocket Proxy setting in config file
+    ##  - Rocket Proxy uses by default port 80 for docker image, else port 8000
+    ##  - If the internal port is changed, the followng settings or variables
+    ##    might need to be changed: ROCKET_PORT, DOMAIN, Traefik label/copnfig
+    ##    LOADBALANCER.url/port=internal/Rocket Port
+    # ports:
+    #   - "9980:${VAULTWARDEN_ROCKET_PORT:-80}"               ## Disabled port publishing: Using reverse proxy  directly from docker network
+      # - "${HOST_IP:?}:9980:80"                              ## No benefit using HOST_IP, due to HTTPS requirement
     restart: unless-stopped
-    volumes:
-      - "${CONTAINER_VOLUME:-./volume_data}:/data" 
-    environment:
-      ADMIN_TOKEN_FILE: /run/secrets/vaultwarden_admin_token  ## Loads the admin token via docker secrets
-      DOMAIN: "https://${SERVICE_URL:?}"                 ## Required when using a reverse proxy; your domain; vaultwarden needs to know it's https to work properly with attachments
-      SIGNUPS_ALLOWED: "false"                           ## Deactivate with "false" after you have created your account so that no strangers can register
-      PUSH_INSTALLATION_ID_FILE: /run/secrets/vaultwarden_push_id
-      PUSH_INSTALLATION_KEY_FILE: /run/secrets/vaultwarden_push_key
-      ROCKET_PORT: "9980"
-      SMTP_FROM: ${SMTP_FROM:?}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME:?}
-      SMTP_HOST: "${SMTP_HOST:?}"
-      SMTP_PASSWORD_FILE: /run/secrets/vaultwarden_smtp_password
-      SMTP_USERNAME_FILE: /run/secrets/vaultwarden_smtp_email
-      TZ: ${TZ}
-      
+
     env_file: 
       - .env.vaultwarden
+    environment:
+      TZ: ${TZ:?}
+
+      ADMIN_TOKEN_FILE: /run/secrets/vaultwarden_admin_token          ## Loads the admin token via docker secrets
+      PUSH_INSTALLATION_ID_FILE: /run/secrets/vaultwarden_push_id
+      PUSH_INSTALLATION_KEY_FILE: /run/secrets/vaultwarden_push_key
+      SMTP_PASSWORD_FILE: /run/secrets/vaultwarden_smtp_password
+      SMTP_USERNAME_FILE: /run/secrets/vaultwarden_smtp_email
+
+    volumes:
+      - "${CONTAINER_VOLUME:-./volume_data}:/data"       
     secrets:
       - vaultwarden_admin_token 
       - vaultwarden_smtp_email
@@ -51,18 +71,29 @@ services:
       - vaultwarden_push_id 
       - vaultwarden_push_key
 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${VAULTWARDEN_ROCKET_PORT:-80}/alive"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 5s      
+
     labels:
+      homepage.group: Services
+      homepage.name: Vaultwarden
+      homepage.icon: vaultwarden-light.png
+      homepage.href: https://${VAULTWARDEN_DOMAIN:?}
+      homepage.description: Password Manager & 2FA
 
-      - homepage.group=Services
-      - homepage.name=Vaultwarden
-      - homepage.icon=vaultwarden-light.png
-      - homepage.href=https://vault.${DOMAIN_NAME:?}
-      - homepage.description=Password Manager & 2FA
-
-      - "traefik.enable=true"
-      # - "traefik.http.routers.vaultwarden.entrypoints=https-internal"
-      - "traefik.http.routers.vaultwarden.entrypoints=https-external,https-internal"
-      - "traefik.http.routers.vaultwarden.rule=Host(`${SERVICE_URL:-vaultwarden.local}`) || Host(`vault.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`)"
-      - "traefik.http.routers.vaultwarden.service=vaultwarden"
-      - "traefik.http.routers.vaultwarden.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.vaultwarden.loadbalancer.server.port=9980"
+      traefik.enable: "true"
+      # traefik.http.routers.vaultwarden.entrypoints: https-internal
+      traefik.http.routers.vaultwarden.entrypoints: https-external,https-internal
+      traefik.http.routers.vaultwarden.rule: Host(`${VAULTWARDEN_DOMAIN:?}`) || Host(`vault.${HOSTNAME:?}.${DOMAIN_NAME:?}`)
+      traefik.http.routers.vaultwarden.service: vaultwarden
+      traefik.http.routers.vaultwarden.tls.certresolver: letsencrypt_dns
+      traefik.http.services.vaultwarden.loadbalancer.healthcheck.path: "/alive"
+      traefik.http.services.vaultwarden.loadbalancer.healthcheck.interval: 1m30s
+      traefik.http.services.vaultwarden.loadbalancer.healthcheck.timeout: 10s
+      traefik.http.services.vaultwarden.loadbalancer.server.url: http://${CONTAINER_NAME:-vaultwarden}:${VAULTWARDEN_ROCKET_PORT:-80}
+      # traefik.http.services.vaultwarden.loadbalancer.server.port: "${VAULTWARDEN_ROCKET_PORT:-80}"
