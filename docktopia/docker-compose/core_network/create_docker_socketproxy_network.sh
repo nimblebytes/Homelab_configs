@@ -1,1 +1,0 @@
-docker network create --internal --subnet 172.31.0.0/24 socketproxy
