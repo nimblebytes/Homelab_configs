@@ -53,4 +53,3 @@ http:
           - 10.0.31.0/24                 ## DMZ network
           - 10.0.99.0/24                 ## Default LAN network
           - 172.27.0.0/24                ## (Rootless) Docker network - Proxy
-          # - 172.23.0.2 ##temp, current traefik network on witchdoctor

@@ -7,15 +7,15 @@ global:
 # API and dashboard configuration
 api:
   dashboard: true                       ## Enable dashboard
-#  insecure: true                         ## Enable access over any URL or Host IP. Need to enable port 8080 as well.
-#  debug: true                            ## Enable api endpoints for debugging
+  # insecure: true                        ## Enable access over any URL or Host IP. Need to enable port 8080 as well.
+  # debug: true                           ## Enable api endpoints for debugging
   disabledashboardad: true              ## Disable the Ad within the dashboard
 
 providers:
   docker:                               ## Docker provider for dynamic configurations
     exposedByDefault: false             ## Expose containers by default
     watch: true                         ## Watch for docker events
-    # ## Socket proxy option (1 of 3). See compose file for other options
+    ## Socket proxy option (1 of 3). See compose file for other options
     endpoint: "tcp://dockersocketproxy:2375"  ## socket proxy to use
     network: proxy                      ## The network name to use for service discovery (do not put the socket proxy on this network)
 
@@ -69,7 +69,7 @@ entrypoints:
         - "127.0.0.1/32"
         - "10.0.31.10/32"               ## Traefik - Witchdoctor
         # - "10.0.31.1/24"                ## DMZ Network
-        - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+        - "10.0.32.12/24"               ## Traefik - Dogwood
 
 
   http-external:                       ## Entrypoint for internet reachable service. Must be added to router/firewall
@@ -85,7 +85,7 @@ entrypoints:
     address: ":10443"
     http:
       tls:                             ## Add TLS certs to the Entry point
-        certResolver: resolver_le      ## Which resolver to use
+        certResolver: letsencrypt      ## Which resolver to use
         # domains:                        ## Privacy: using docker secrets and env variable (TRAEFIK_ENTRYPOINTS_XXX_HTTP_TLS_DOMAINS_0_MAIN, etc)
         #   - main: "example.com"       ## Domain/s to use with the Entry point
         #     sans: 
@@ -101,7 +101,7 @@ entrypoints:
         - "127.0.0.1/32"
         - "10.0.31.10/32"               ## Traefik - Witchdoctor
         # - "10.0.31.1/24"                ## DMZ Network
-        # - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+        - "172.27.0.250/32"             ## Traefik - local docker proxy network
 
     ## proxyProtocol: Define if PROXY protocol is enabled and used by upstream proxy
     ## Useful for: 
@@ -113,7 +113,8 @@ entrypoints:
         - "127.0.0.1/32"
         - "10.0.31.10/32"               ## Traefik - Witchdoctor
         # - "10.0.31.1/24"                ## DMZ Network
-        # - "172.27.0.1"                  ## ?? is this the ip of traefik on docktopia or witchdoctor ??
+        - "10.0.32.12/24"               ## Traefik - Dogwood
+        - "172.27.0.250/32"             ## Traefik - local docker proxy network     
 
     
     
@@ -125,13 +126,15 @@ certificatesresolvers:
       storage: "/acme.json"
       tlschallenge: {}
 
+  ## Resolver suitable for externally accessible services; LetEncrypt can challenge the service directly
   letsencrypt: 
     acme:
       # caserver: "https://acme-staging-v02.api.letsencrypt.org/directory"   ## Disable/Remove to NOT use the staging environment
       # email: "<EMAIL@ADDRESS.COM>"   ## Obtained through env variable: TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL
       storage: "/acme.json"
       tlschallenge: {}
-      
+
+  ## Resolver for internal services; LetEncrypt must use DNS challenges to test the service
   letsencrypt_dns: 
     acme:
       # caserver: "https://acme-staging-v02.api.letsencrypt.org/directory"   ## Disable/Remove to NOT use the staging environment
@@ -170,3 +173,11 @@ accessLog:
       - 300-399
       # - 200
   format: common               ## Options: json, common
+
+
+experimental:
+  plugins:
+    bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      # version: v1.3.3          ## 2024-09-12
+      version: v1.4.4          ## 2025-07-02
