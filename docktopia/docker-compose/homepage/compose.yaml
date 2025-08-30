@@ -74,20 +74,24 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:${IMAGE_TAG:-latest}
     container_name: ${CONTAINER_NAME:-homepage}
+    # user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}     ## Do not use with Docker Rootless
     restart: unless-stopped
     networks:
-      - socketproxy                                     ## Connection to docker socket via socketproxy
-      - proxy
+      socketproxy: {}                             ## Connection to docker socket via socketproxy
+      proxy: {}
     ports:
-      - "${HOST_IP:?}:3000:3000"
+      - "3000:3000"
     volumes:
-      - ${CONTAINER_CONFIG:?}/config:/app/config # Make sure your local config directory exists
-      - ${CONTAINER_CONFIG:?}/images:/app/public/images # Make sure your local image directory exists
+      - ${CONTAINER_CONFIG:?}/config:/app/config  ## Make sure your local config directory exists
+      - ${CONTAINER_CONFIG:?}/images:/app/public/images ## Make sure your local image directory exists
       - ${CONTAINER_VOLUME:?}:/app/config/logs/
-      # - /var/run/user/1000/docker.sock:/var/run/docker.sock # (optional) For docker integrations, see alternative methods in: Homepage>config>docker.yaml
+      # - ${DOCKER_SOCK}.sock:/var/run/docker.sock # (optional) For docker integrations, see alternative methods in: Homepage>config>docker.yaml
+      
+    env_file: 
+      - .env.homepage
     environment:
-      PUID: ${PUID_DOCKER}
-      PGID: ${PUID_DOCKER}      
+      # PUID: ${PUID_DOCKER:?}                    ## Do not use with Docker Rootless
+      # PGID: ${PGID_DOCKER:?}                    ## Do not use with Docker Rootless
       HOMEPAGE_FILE_BAZARR_API: "/run/secrets/bazarr_api"
       HOMEPAGE_FILE_IMMICH_API: "/run/secrets/immich_api"
       HOMEPAGE_FILE_JELLYFIN_API_KEY: "/run/secrets/jellyfin_api"
@@ -116,8 +120,6 @@ services:
       HOMEPAGE_FILE_WEATHER_LOCATION_LAT: "/run/secrets/weather_location_lat"
       HOMEPAGE_FILE_WEATHER_LOCATION_LONG: "/run/secrets/weather_location_long"
       HOMEPAGE_FILE_WEATHER_LOCATION_NAME: "/run/secrets/weather_location_name"
-    env_file: 
-      - .env.homepage
     secrets:
       - bazarr_api
       - immich_api
@@ -149,9 +151,9 @@ services:
       - weather_location_name
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.homepage.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.homepage.rule=Host(`dash.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/dashboard`))"
-      - "traefik.http.routers.homepage.service=homepage"
-      - "traefik.http.routers.homepage.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+      traefik.enable: "true"
+      traefik.http.routers.homepage.entrypoints: https-internal     ## Only available for the internal network
+      traefik.http.routers.homepage.rule: Host(`dash.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/dashboard`))
+      traefik.http.routers.homepage.service: homepage
+      traefik.http.routers.homepage.tls.certresolver: letsencrypt_dns
+      traefik.http.services.homepage.loadbalancer.server.url: http://${CONTAINER_NAME:-homepage}:3000

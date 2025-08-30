@@ -59,7 +59,8 @@
         icon: mdi-access-point-network-#f0d453
         href: http://10.0.40.100
         description: Hasivo 9 port 2.5G managed switch
-            
+
+
 
 - Media Players:
     - Kodi:
@@ -69,19 +70,6 @@
 
 
 - Docker Oversight:
-    # - Portainer-old:
-    #     href: https://docktopia.{{HOMEPAGE_VAR_DOMAIN_NAME}}/portainer
-    #     description: Docker GUI
-    #     icon: portainer.png
-    #     server: docktopia_socketproxy
-    #     container: portainer
-    #     widget:
-    #         type: portainer
-    #         # url: "http://10.0.31.2:9000"
-    #         url: "https://docktopia.{{HOMEPAGE_VAR_DOMAIN_NAME}}/portainer"
-    #         env: 1
-    #         key: {{HOMEPAGE_FILE_PORTAINER_API_KEY_docktopia}}
-
     - Traefik - Witchdoctor:
         icon: traefik.svg
         href: https://traefik.witchdoctor.{{HOMEPAGE_VAR_DOMAIN_NAME}}
