@@ -33,8 +33,7 @@ services:
       traefik.http.routers.navidrome.rule: 'Host(`music.${DOMAIN_NAME:-local}`)'
       traefik.http.routers.navidrome.tls.certresolver: letsencrypt_dns
       traefik.http.routers.navidrome.service: navidrome
-      traefik.http.services.navidrome.loadbalancer.server.url: "http://navidrome:4533"
-      # traefik.http.services.navidrome.loadbalancer.server.url: "http://${CONTAINER_NAME:-navidrome}:4533"
+      traefik.http.services.navidrome.loadbalancer.server.url: "http://${CONTAINER_NAME:-navidrome}:4533"
 
       homepage.group: Media Players
       homepage.name: Navidrome
@@ -42,7 +41,6 @@ services:
       homepage.href: https://music.${DOMAIN_NAME:?}
       homepage.description: Music player
       homepage.widget.type: navidrome
-      # homepage.widget.url: https://music.${DOMAIN_NAME:?}
       homepage.widget.url: http://${CONTAINER_NAME:-navidrome}:4533
       homepage.widget.user: "{{HOMEPAGE_FILE_NAVIDROME_USERNAME}}"
       homepage.widget.token: "{{HOMEPAGE_FILE_NAVIDROME_TOKEN}}"
