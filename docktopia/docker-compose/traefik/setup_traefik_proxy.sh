@@ -124,8 +124,8 @@ cd ${DOCKER_SECRETS:?}
 status_message "$LOG_LEVEL_DEBUG" "Creating required files within folder ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
 touch cloudflare_email
 status_message "$LOG_LEVEL_DEBUG" "Created file: ${LIGHT_CYAN}cloudflare_email${RESET}"
-touch coudflare_api
-status_message "$LOG_LEVEL_DEBUG" "Created file: ${LIGHT_CYAN}coudflare_api${RESET}"
+touch cloudflare_api
+status_message "$LOG_LEVEL_DEBUG" "Created file: ${LIGHT_CYAN}cloudflare_api${RESET}"
 
 
 ## Script to create docker network for traefik. Check if the script exists and run it.
