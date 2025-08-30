@@ -6,23 +6,36 @@ networks:
   proxy:
     name: proxy
     external: true    
-  flaresolverr_network:
-    driver: bridge
 
 ########################### SERVICES  
 services:
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:${IMAGE_TAG:?}
     container_name: "flaresolverr"
     restart: unless-stopped
     user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}       ## Overrides the user used to run the container process.
     networks:
-      - flaresolverr_network
       - proxy
     ports:
-      - "${HOST_IP:?}:8191:8191"
+      - "8191:8191"
     ## File containing environment variables to be inserted into the container
     env_file: 
       - .env.flaresolverr
     environment:
-      - TZ=${TZ:-Europe/Berlin}    
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.flaresolverr.rule: Host(`${HOSTNAME}.${DOMAIN_NAME:-home.arpa}`) && PathPrefix(`/flaresolverr`)
+      traefik.http.routers.flaresolverr.entrypoints: https-internal    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      traefik.http.routers.flaresolverr.middlewares: flaresolverr-stripprefix
+      traefik.http.routers.flaresolverr.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.flaresolverr.service: flaresolverr
+      traefik.http.middlewares.flaresolverr-stripprefix.stripprefix.prefixes: "/flaresolverr"
+      traefik.http.services.flaresolverr.loadbalancer.server.url: "http://flaresolverr:8191"
+
+      homepage.group: Containers
+      homepage.name: Flaresolver
+      homepage.icon: flaresolverr.svg
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/flaresolverr
+      homepage.description: Cloudflare solver via REST API
+   
