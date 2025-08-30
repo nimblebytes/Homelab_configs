@@ -11,55 +11,62 @@ networks:
   proxy:
     name: proxy
     external: true
+  immich_app:
+    name: immich_app
+    internal: "true"
+    labels:
+      internal.docker.network.description: "Immich internal app network"  
 
 ########################### SERVICES  
 services:
   immich-server:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - database
+    networks:
+      proxy: {}                                                       ## Reverse proxy network
+      immich_app: {}                                                  ## Network for the Immich component to connect with each other
+    ports:
+      - "2283:2283"
     # extends:
     #   file: hwaccel.transcoding.yml
     #   service: cpu # set to one of [nvenc, quicksync, rkmpp, vaapi, vaapi-wsl] for accelerated transcoding
+    env_file:
+      - .env
+    environment:
+      DB_PASSWORD_FILE: /run/secrets/postgres_db_password
     volumes:
     # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      DB_PASSWORD_FILE: /run/secrets/postgres_db_password
-    env_file:
-      - .env
     secrets:
       - postgres_db_password
-    # networks:
-    #   - proxy
-    ports:
-      - '2283:2283'
-    depends_on:
-      - redis
-      - database
-    restart: unless-stopped
 
     healthcheck:
       disable: false
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.immich.entrypoints=https-internal"    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
-      - "traefik.http.routers.immich.rule=Host(`immich.${DOMAIN_NAME:-home.arpa}`) || Host(`photobook.${DOMAIN_NAME:-home.arpa}`)"
-      - "traefik.http.routers.immich.tls.certresolver=letsencrypt_dns" ## letsencrypt; letsencrypt_dns; letsencrypt_testing
-      - "traefik.http.routers.immich.service=immich"
-      - "traefik.http.services.immich.loadbalancer.server.url=http://${HOST_IP:?}:2283"
-      - homepage.group=Media Players
-      - homepage.name=Immich
-      - homepage.icon=immich.svg
-      - homepage.href=https://photobook.${DOMAIN_NAME:?}
-      - homepage.description=Photo importer and manager
-      - homepage.widget.type=immich
-      - homepage.widget.url=https://photobook.${DOMAIN_NAME:?}
-      - homepage.widget.key={{HOMEPAGE_FILE_IMMICH_API}}
-      - homepage.widget.version=2
-      - homepage.widget.fields=["users" ,"photos", "videos", "storage"] ## Options: "users", "photos", "videos", "storage"
+      traefik.enable: "true"
+      traefik.http.routers.immich.entrypoints: https-internal    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      traefik.http.routers.immich.rule: Host(`immich.${DOMAIN_NAME:-home.arpa}`) || Host(`photobook.${DOMAIN_NAME:-home.arpa}`)
+      traefik.http.routers.immich.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.immich.service: immich
+      # traefik.http.services.immich.loadbalancer.server.url: "http://${HOST_IP:?}:2283"
+      traefik.http.services.immich.loadbalancer.server.url: "http://immich-server:2283"
 
+      homepage.group: Media Players
+      homepage.name: Immich
+      homepage.icon: immich.svg
+      homepage.href: https://photobook.${DOMAIN_NAME:?}
+      homepage.description: Photo importer and manager
+      homepage.widget.type: immich
+      homepage.widget.url: http://immich-server:2283
+      homepage.widget.key: "{{HOMEPAGE_FILE_IMMICH_API}}"
+      homepage.widget.version: 2
+      homepage.widget.fields: '["users" ,"photos", "videos", "storage"]'  ## Options: "users", "photos", "videos", "storage"
 
   immich-machine-learning:
     container_name: immich_machine_learning
@@ -69,6 +76,8 @@ services:
     # extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
     #   file: hwaccel.ml.yml
     #   service: cpu # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
+    networks:
+      immich_app: {}                                                  ## Network for the Immich components to connect with each other
     volumes:
       - model-cache:/cache
     env_file:
@@ -80,6 +89,8 @@ services:
   redis:
     container_name: immich_redis
     image: docker.io/valkey/valkey:8-bookworm@sha256:42cba146593a5ea9a622002c1b7cba5da7be248650cbb64ecb9c6c33d29794b1
+    networks:
+      immich_app: {}
     healthcheck:
       test: redis-cli ping || exit 1
     restart: always
@@ -87,6 +98,8 @@ services:
   database:
     container_name: immich_postgres
     image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0@sha256:739cdd626151ff1f796dc95a6591b55a714f341c737e27f045019ceabf8e8c52
+    networks:
+      immich_app: {}
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/postgres_db_password
       POSTGRES_USER: ${DB_USERNAME}
