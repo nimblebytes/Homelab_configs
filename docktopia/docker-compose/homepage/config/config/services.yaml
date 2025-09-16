@@ -105,7 +105,7 @@
     - Brother Printer:
         description: "Brother Printer DCP-1612W"
         icon: brother.svg
-        href: http://10.0.22.10"
+        href: http://10.0.22.10
 
     - Brother Printer2:
         description: "Brother Printer DCP-1612W"

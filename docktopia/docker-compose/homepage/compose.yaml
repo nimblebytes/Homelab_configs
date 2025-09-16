@@ -90,8 +90,8 @@ services:
     env_file: 
       - .env.homepage
     environment:
-      # PUID: ${PUID_DOCKER:?}                    ## Do not use with Docker Rootless
-      # PGID: ${PGID_DOCKER:?}                    ## Do not use with Docker Rootless
+      # PUID: "${PUID_DOCKER:?}"                  ## Do not use with Docker Rootless
+      # PGID: "${PGID_DOCKER:?}"                  ## Do not use with Docker Rootless
       HOMEPAGE_FILE_BAZARR_API: "/run/secrets/bazarr_api"
       HOMEPAGE_FILE_IMMICH_API: "/run/secrets/immich_api"
       HOMEPAGE_FILE_JELLYFIN_API_KEY: "/run/secrets/jellyfin_api"

@@ -25,7 +25,7 @@ headerStyle: boxed
 target: _blank                  ## Possible options include _blank, _self, and _top
 
 ## Show container stats
-##showStats: true
+##showStats: "true"
 
 ## Show container status as a dot
 #statusStyle: "dot"
@@ -60,5 +60,5 @@ providers:
 
 
 ## Hide any API errors
-#hideErrors: true
+#hideErrors: "true"
 

@@ -9,8 +9,8 @@
     # icon: /images/forest_icon_03.png
 
 - resources:
-    cpu: true
-    memory: true
+    cpu: "true"
+    memory: "true"
     disk: /
 
 - search:
