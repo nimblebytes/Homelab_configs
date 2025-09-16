@@ -6,7 +6,7 @@ name: "media-source"
 networks:
   proxy:
     name: proxy
-    external: true    
+    external: "true"    
   vpn_tunnel:
     driver: bridge
 
@@ -25,16 +25,16 @@ services:
     cap_add:
       - NET_ADMIN #required
     networks:
-      - vpn_tunnel
-      - proxy
+      vpn_tunnel: {}
+      proxy: {}
     environment:
-      - PRIVATE_KEY_FILE=/run/secrets/nordlynx_token
-      #- COUNTRY_CODE=${COUNTRY_CODE_LYNX}
-      - QUERY=${QUERY:?}
-      - DNS=${DNS:?}
-      - NET_LOCAL=${NET_LOCAL}  # So it can be accessed within the local network
-      - TABLE=auto  # Recommend: adds routes to the default table and enables special handling of default routes
-      - TZ=${TZ_VPN:-ETC/UTC}
+      PRIVATE_KEY_FILE: /run/secrets/nordlynx_token
+      # COUNTRY_CODE: ${COUNTRY_CODE_LYNX}
+      QUERY: ${QUERY:?}
+      DNS: ${DNS:?}
+      NET_LOCAL: ${NET_LOCAL}  # So it can be accessed within the local network
+      TABLE: auto  # Recommend: adds routes to the default table and enables special handling of default routes
+      TZ: ${TZ_VPN:-ETC/UTC}
     ports:
       - ${HOST_IP}:5800:5800  ## FileBot WebUI
       - ${HOST_IP}:6767:6767  ## Bazarr WebUI
@@ -45,7 +45,7 @@ services:
     secrets:
       - nordlynx_token 
     sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1  # Recomended if using ipv4 only
+      net.ipv6.conf.all.disable_ipv6: "1"  # Recomended if using ipv4 only
     restart: unless-stopped
 
 ################## Services - qbittorrent
@@ -54,48 +54,48 @@ services:
     image: ghcr.io/linuxserver/qbittorrent:${QBITTORRENT_IMAGE_TAG:-latest}
     network_mode: service:vpn
     depends_on:
-      - vpn
+      vpn: {}
 #    ports:
 #      - 8080:8080  # Must be added to the VPN
     environment:
-      - PUID=${PUID_DOCKER:?}
-      - PGID=${PGID_DOCKER:?}
-      - TZ=${TZ_VPN:-ETC/UTC}
-      - WEBUI_PORT=8080
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
+      TZ: ${TZ_VPN:-ETC/UTC}
+      WEBUI_PORT: "8080"
     volumes:
       - ${DOCKER_VOLUMES:?}/qbittorrent:/config
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads:/downloads
     restart: unless-stopped
     labels:
-      - homepage.group=Containers
-      - homepage.name=Qbittorrent
-      - homepage.icon=qbittorrent.png
-      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
-      - homepage.description=Entertainment Supplier
-      - homepage.widget.type=qbittorrent
-      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
-      - homepage.widget.username={{HOMEPAGE_FILE_QBITTORRENT_USER}}
-      - homepage.widget.password={{HOMEPAGE_FILE_QBITTORRENT_PASSWORD}}
+      homepage.group: Containers
+      homepage.name: Qbittorrent
+      homepage.icon: qbittorrent.png
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
+      homepage.description: Entertainment Supplier
+      homepage.widget.type: qbittorrent
+      homepage.widget.url: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/qb
+      homepage.widget.username: "{{HOMEPAGE_FILE_QBITTORRENT_USER}}"
+      homepage.widget.password: "{{HOMEPAGE_FILE_QBITTORRENT_PASSWORD}}"
 
-      - "traefik.enable=true"
+      traefik.enable: "true"
       # adding a slash to the end
-      - "traefik.http.middlewares.qb-redirect.redirectregex.regex=^(.*)/qb$$"
-      - "traefik.http.middlewares.qb-redirect.redirectregex.replacement=$$1/qb/"
-      - "traefik.http.middlewares.qb-strip.stripprefix.prefixes=/qb/"
+      traefik.http.middlewares.qb-redirect.redirectregex.regex: "^(.*)/qb$$"
+      traefik.http.middlewares.qb-redirect.redirectregex.replacement: "$$1/qb/"
+      traefik.http.middlewares.qb-strip.stripprefix.prefixes: "/qb/"
       # appropriate header changes
-      - "traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options=SAMEORIGIN"
-      - "traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer="
-      - "traefik.http.middlewares.qb-headers.headers.customrequestheaders.Origin="
+      traefik.http.middlewares.qb-headers.headers.customrequestheaders.X-Frame-Options: "SAMEORIGIN"
+      traefik.http.middlewares.qb-headers.headers.customrequestheaders.Referer: ""
+      traefik.http.middlewares.qb-headers.headers.customrequestheaders.Origin: ""
       # Service router settings
-      - "traefik.http.routers.qbittorrent.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.qbittorrent.middlewares=qb-strip,qb-redirect,qb-headers"
-      - "traefik.http.routers.qbittorrent.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/qb`)"
-      - "traefik.http.routers.qbittorrent.service=qbittorrent"
-      - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.qbittorrent.loadbalancer.passhostheader=false"
-      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
-      # - "traefik.http.services.qbittorrent.loadbalancer.server.scheme=http" 
-      - "traefik.docker.network=proxy"            
+      traefik.http.routers.qbittorrent.entrypoints: https-internal     ## Only available for the internal network
+      traefik.http.routers.qbittorrent.middlewares: qb-strip,qb-redirect,qb-headers
+      traefik.http.routers.qbittorrent.rule: Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/qb`)
+      traefik.http.routers.qbittorrent.service: qbittorrent
+      traefik.http.routers.qbittorrent.tls.certresolver: letsencrypt_dns
+      traefik.http.services.qbittorrent.loadbalancer.passhostheader: "false"
+      traefik.http.services.qbittorrent.loadbalancer.server.port: "8080"
+      # traefik.http.services.qbittorrent.loadbalancer.server.scheme: http
+      traefik.docker.network: proxy           
   
 
 ################## Services - Prowlarr
@@ -108,29 +108,29 @@ services:
 #    ports:
 #      - 9696:9696  # Must be added to the VPN
     environment:
-      - PUID=${PUID_DOCKER:?}
-      - PGID=${PGID_DOCKER:?}
-      - TZ=${TZ_VPN:-ETC/UTC}
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
+      TZ: ${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/prowlarr:/config
     restart: unless-stopped
     labels:
-      - homepage.group=Containers
-      - homepage.name=Prowlarr
-      - homepage.icon=prowlarr.png
-      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/prowlarr
-      - homepage.description=Index Manager
-      - homepage.widget.type=prowlarr
-      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/prowlarr
-      - homepage.widget.key={{HOMEPAGE_FILE_PROWLARR_API}}
+      homepage.group: Containers
+      homepage.name: Prowlarr
+      homepage.icon: prowlarr.png
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/prowlarr
+      homepage.description: Index Manager
+      homepage.widget.type: prowlarr
+      homepage.widget.url: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/prowlarr
+      homepage.widget.key: "{{HOMEPAGE_FILE_PROWLARR_API}}"
       
-      - "traefik.enable=true"
-      - "traefik.http.routers.prowlarr.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.prowlarr.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/prowlarr`)"
-      - "traefik.http.routers.prowlarr.service=prowlarr"
-      - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
-      - "traefik.http.services.prowlarr.loadbalancer.server.scheme=http"      
+      traefik.enable: "true"
+      traefik.http.routers.prowlarr.entrypoints: https-internal     ## Only available for the internal network
+      traefik.http.routers.prowlarr.rule: Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/prowlarr`)
+      traefik.http.routers.prowlarr.service: prowlarr
+      traefik.http.routers.prowlarr.tls.certresolver: letsencrypt_dns
+      traefik.http.services.prowlarr.loadbalancer.server.port: "9696"
+      traefik.http.services.prowlarr.loadbalancer.server.scheme: http
       
 
 
@@ -144,32 +144,32 @@ services:
 #    ports:
 #      - 7878:7878  # Must be added to the VPN
     environment:
-      - PUID=${PUID_DOCKER:?}
-      - PGID=${PGID_DOCKER:?}
-      - TZ=${TZ_VPN:-ETC/UTC}
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
+      TZ: ${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/radarr:/config
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads/03_processed/:/media ## Media library location - nfs
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads/02_completed:/downloads/02_completed/ ## Downloads location
     restart: unless-stopped
     labels:
-      - homepage.group=Containers
-      - homepage.name=Radarr
-      - homepage.icon=radarr.png
-      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
-      - homepage.description=Movie Manager
-      - homepage.widget.type=radarr
-      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
-      - homepage.widget.key={{HOMEPAGE_FILE_RADARR_API}}
-      - homepage.widget.enableQueue=false
+      homepage.group: Containers
+      homepage.name: Radarr
+      homepage.icon: radarr.png
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
+      homepage.description: Movie Manager
+      homepage.widget.type: radarr
+      homepage.widget.url: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/radarr
+      homepage.widget.key: "{{HOMEPAGE_FILE_RADARR_API}}"
+      homepage.widget.enableQueue: "false"
 
-      - "traefik.enable=true"
-      - "traefik.http.routers.radarr.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.radarr.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/radarr`)"
-      - "traefik.http.routers.radarr.service=radarr"
-      - "traefik.http.routers.radarr.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
-      - "traefik.http.services.radarr.loadbalancer.server.scheme=http"
+      traefik.enable: "true"
+      traefik.http.routers.radarr.entrypoints: https-internal       ## Only available for the internal network
+      traefik.http.routers.radarr.rule: Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/radarr`)
+      traefik.http.routers.radarr.service: radarr
+      traefik.http.routers.radarr.tls.certresolver: letsencrypt_dns
+      traefik.http.services.radarr.loadbalancer.server.port: "7878"
+      traefik.http.services.radarr.loadbalancer.server.scheme: http
     
 
 ################## Services - Sonarr
@@ -182,32 +182,32 @@ services:
 #    ports:
 #      - 8989:8989  # Must be added to the VPN
     environment:
-      - PUID=${PUID_DOCKER:?}
-      - PGID=${PGID_DOCKER:?}
-      - TZ=${TZ_VPN:-ETC/UTC}
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
+      TZ: ${TZ_VPN:-ETC/UTC}
     volumes:
       - ${DOCKER_VOLUMES:?}/sonarr:/config
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads/03_processed/:/media ## Media library location - nfs
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads/02_completed:/downloads/02_completed/ ## Downloads location
     restart: unless-stopped
     labels:
-      - homepage.group=Containers
-      - homepage.name=Sonarr
-      - homepage.icon=sonarr.png
-      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
-      - homepage.description=TV Series Manager
-      - homepage.widget.type=sonarr
-      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
-      - homepage.widget.key={{HOMEPAGE_FILE_SONARR_API}}
-      - homepage.widget.enableQueue=false
+      homepage.group: Containers
+      homepage.name: Sonarr
+      homepage.icon: sonarr.png
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
+      homepage.description: TV Series Manager
+      homepage.widget.type: sonarr
+      homepage.widget.url: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/sonarr      
+      homepage.widget.key: "{{HOMEPAGE_FILE_SONARR_API}}"
+      homepage.widget.enableQueue: "false"
 
-      - "traefik.enable=true"
-      - "traefik.http.routers.sonarr.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.sonarr.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/sonarr`)"
-      - "traefik.http.routers.sonarr.service=sonarr"
-      - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
-      - "traefik.http.services.sonarr.loadbalancer.server.scheme=http"      
+      traefik.enable: "true"
+      traefik.http.routers.sonarr.entrypoints: https-internal     ## Only available for the internal network
+      traefik.http.routers.sonarr.rule: Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/sonarr`)
+      traefik.http.routers.sonarr.service: sonarr
+      traefik.http.routers.sonarr.tls.certresolver: letsencrypt_dns
+      traefik.http.services.sonarr.loadbalancer.server.port: 8989
+      traefik.http.services.sonarr.loadbalancer.server.scheme: http
       
   bazarr:
     image: ghcr.io/hotio/bazarr:${BAZARR_IMAGE_TAG:-latest}
@@ -219,30 +219,30 @@ services:
     #  - 6767:6767  # Must be added to the VPN
     restart: unless-stopped
     environment:
-      - TZ=${TZ:-Europe/Berlin}
-      - PUID=${PUID_DOCKER:?}
-      - PGID=${PGID_DOCKER:?}
-      - UMASK=002
-      - WEBUI_PORTS=6767/tcp,6767/udp
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
+      TZ: ${TZ:-Europe/Berlin}
+      UMASK: "002"
+      WEBUI_PORTS: 6767/tcp,6767/udp
     volumes:
       - ${DOCKER_VOLUMES:?}/bazarr/config:/config
       - ${DOCKER_VOLUMES_EPHEMERAL_DATA:?}/downloads/03_processed/:/data ## Media library location - nfs
 
     labels:
-      - homepage.group=Containers
-      - homepage.name=bazarr
-      - homepage.icon=bazarr.png
-      - homepage.href=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/bazarr
-      - homepage.description=Index Manager
-      - homepage.widget.type=bazarr
-      - homepage.widget.url=https://${HOSTNAME:?}.${DOMAIN_NAME:?}/bazarr
-      - homepage.widget.key={{HOMEPAGE_FILE_BAZARR_API}}
+      homepage.group: Containers
+      homepage.name: bazarr
+      homepage.icon: bazarr.png
+      homepage.href: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/bazarr
+      homepage.description: Index Manager
+      homepage.widget.type: bazarr
+      homepage.widget.url: https://${HOSTNAME:?}.${DOMAIN_NAME:?}/bazarr
+      homepage.widget.key: "{{HOMEPAGE_FILE_BAZARR_API}}"
 
-      - "traefik.enable=true"
-      - "traefik.http.routers.bazarr.entrypoints=https-internal"     ## Only available for the internal network
-      - "traefik.http.routers.bazarr.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/bazarr`)"
-      - "traefik.http.routers.bazarr.service=bazarr"
-      - "traefik.http.routers.bazarr.tls.certresolver=letsencrypt_dns"
-      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
-      - "traefik.http.services.bazarr.loadbalancer.server.scheme=http"
+      traefik.enable: "true"
+      traefik.http.routers.bazarr.entrypoints: https-internal     ## Only available for the internal network
+      traefik.http.routers.bazarr.rule: Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/bazarr`)
+      traefik.http.routers.bazarr.service: bazarr
+      traefik.http.routers.bazarr.tls.certresolver: letsencrypt_dns
+      traefik.http.services.bazarr.loadbalancer.server.port: "6767"
+      traefik.http.services.bazarr.loadbalancer.server.scheme: http
       
