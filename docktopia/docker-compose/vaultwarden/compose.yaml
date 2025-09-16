@@ -4,7 +4,7 @@ name: vaultwarden_stack
 networks:
   proxy:
     name: proxy
-    external: true 
+    external: "true"
 
 ########################### Secrets
 secrets:
