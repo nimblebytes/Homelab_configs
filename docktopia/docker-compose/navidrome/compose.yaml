@@ -2,7 +2,7 @@
 networks:
   proxy:
     name: proxy
-    external: true 
+    external: "true" 
 
 services:
   navidrome:

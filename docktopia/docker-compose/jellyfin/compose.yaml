@@ -5,7 +5,7 @@ name: "jellyfin"
 networks:
   proxy:
     name: proxy
-    external: true
+    external: "true"
 
 ########################### SERVICES      
 services:
@@ -27,8 +27,8 @@ services:
       ## USER of the Jellyfin app, Internally, the container is still running 
       ## as [0], i.e. attaching to container: touch test & ls -l test.
       ## Keep using these or modify the owner/group of the mounted folders.
-      PUID: ${PUID_DOCKER:?}
-      PGID: ${PGID_DOCKER:?}
+      PUID: "${PUID_DOCKER:?}"
+      PGID: "${PGID_DOCKER:?}"
       TZ: ${TZ:?}      
 
     devices:

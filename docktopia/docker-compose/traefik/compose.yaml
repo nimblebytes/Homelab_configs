@@ -3,11 +3,11 @@ name: traefik_stack
 ########################### NETWORKS
 networks:
   socketproxy:
-    external: true
+    external: "true"
   proxy:
-    external: true
+    external: "true"
   security:                             ## Security services: Authelia, CrowdSec        
-    external: true
+    external: "true"
 
 ########################### SECRETS
 secrets:
@@ -42,8 +42,8 @@ services:
     env_file: 
       - .env.traefik 
     environment: 
-      # PUID: ${PUID_DOCKER:?}                                          ## Not needed on Docker Rootless install
-      # PGID: ${PGID_DOCKER:?}                                          ## Not needed on Docker Rootless install
+      # PUID: "${PUID_DOCKER:?}"                                        ## Not needed on Docker Rootless install
+      # PGID: "${PGID_DOCKER:?}"                                        ## Not needed on Docker Rootless install
       TZ: ${TZ:?}
 
       ## Secrets: NOT in .env.traefik file to make it more visible and easier to manage
