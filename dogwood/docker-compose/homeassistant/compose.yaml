@@ -1,14 +1,22 @@
 name: "smart-home"
 
+########################### NETWORKS
+networks:
+  proxy:
+    external: true
+
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:${IMAGE_TAG:-latest}
     container_name: "${CONTAINER_NAME:-service_name}"
     # privileged: true
-    # user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}       ## Overrides the user used to run the container process.
-    network_mode: host
+    # user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}       ## Overrides the user used to run the container process.
+    # network_mode: host
+    networks:
+      proxy: {}
     ports:
-      - ${HOST_IP:?}:8123:8123
+      # - ${HOST_IP:?}:8123:8123                      ## Disabled: Using host network
+      - 8123:8123                                   ## Make it available on device and docker network layer
     restart: unless-stopped
     environment:
       - PUID=${PUID_DOCKER:?}
@@ -20,9 +28,20 @@ services:
     devices:
       - /dev/ttyUSB0:/dev/ttyUSB0  ## Access to the Zigbee Coordinator 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.router.homeassistant.entrypoint=https-internal"    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
-      - "traefik.http.router.homeassistant.rule=Host(`ha.${DOMAIN_NAME:-local}`)"
-      - "traefik.http.router.homeassistant.tls.certresolver=letsencrypt_dns" ## letsencrypt; letsencrypt_dns; letsencrypt_testing
-      - "traefik.http.router.homeassistant.service=homeassistant"
-      - "traefik.http.services.homeassistant.loadbalancer.server.url=http://${HOST_IP:?}:8123"
+      traefik.enable: "true"
+      traefik.http.routers.homeassistant.entrypoints: https-internal    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      traefik.http.routers.homeassistant.rule: Host(`ha.${DOMAIN_NAME:-local}`)
+      traefik.http.routers.homeassistant.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.homeassistant.service: homeassistant
+      ##----------------------------------------------------------------------
+      ## Labels: ...balancer.server.url/port/scheme
+      ##  - use either 'port & scheme' or only 'url', not both together
+      ##  - 'port & scheme' uses the name of the container/service name to find it on the (docker) network
+      ##  - 'url' uses DNS to find the service IP. Better for network or remote resources
+      ##  - 'port': Useful when the container exposes multiples ports, which port Traefik should use.
+      ##----------------------------------------------------------------------
+      # traefik.http.services.homeassistant.loadbalancer.server.url: http://${HOST_IP:?}:8123  ## Do not use when Port & scheme is used
+      traefik.http.services.homeassistant.loadbalancer.server.url: http://homeassistant:8123  ## Do not use when Port & scheme is used
+      # traefik.http.services.homeassistant.loadbalancer.server.port: "8123"
+      # traefik.http.services.homeassistant.loadbalancer.server.scheme: http
+      # traefik.http.services.myservice.loadbalancer.passhostheader: "true"
