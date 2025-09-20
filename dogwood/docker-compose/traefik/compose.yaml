@@ -5,7 +5,19 @@ networks:
   socketproxy:
     external: true
   proxy:
-    external: true
+    name: proxy
+    driver: bridge
+    # attachable: true
+    ipam:
+      config:
+        - subnet: 172.27.0.0/24 
+          ip_range: 172.27.0.0/24
+          gateway: 172.27.0.1
+          # aux_addresses:                                    ## IP Address already in use
+          #   RESERVED_02: 172.27.0.2                         ## Container_Name:IP
+          #   RESERVED_03: 172.27.0.3
+    labels:
+      - "internal.docker.network.description=Proxy network for container services (${HOSTNAME:?})"   
 
 ########################### SECRETS
 secrets:
@@ -14,7 +26,7 @@ secrets:
   cloudflare_email:
     file: ${DOCKER_SECRETS:?}/cloudflare_email
   cloudflare_api_key:
-    file: ${DOCKER_SECRETS:?}/cloudflare_api
+    file: ${DOCKER_SECRETS:?}/cloudflare_api_dogwood
 
 ########################### SERVICES
 services:
@@ -23,8 +35,9 @@ services:
     container_name: "${CONTAINER_NAME:-traefik}"
     restart: unless-stopped
     networks:
-      - proxy
-      - socketproxy
+      proxy:
+        ipv4_address: 172.27.0.250      ## Needs to be static IP, for configs in other containers to trust forwarded headers
+      socketproxy: {}                   ## No static IP, dynamically assigned
 
     ports:
       - "80:80"        ## http-internal
@@ -48,18 +61,19 @@ services:
       - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=/run/secrets/acme_email
       - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_DNS_ACME_EMAIL=/run/secrets/acme_email
       - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_TESTING_ACME_EMAIL=/run/secrets/acme_email
-      - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS=${DOMAIN_NAME}
-      - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS_0_MAIN=${DOMAIN_NAME}
-      # - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS_0_SANS=*.${DOMAIN_NAME}
-      - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS=${DOMAIN_NAME}
-      - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS_0_MAIN=${DOMAIN_NAME}
-      # - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS_0_SANS=*.${DOMAIN_NAME}
+      ## Lower case used in variable names, as Traefik uses the variable name to identify and match the correct endpoint
+      ## - Use the same format and case, makes it obvious and easier to identify that a static config value is being referenced
+      - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS=${DOMAIN_NAME}                      ## Create cert for external domain
+      - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS_0_MAIN=${HOSTNAME}.${DOMAIN_NAME}   ## Create cert for host
+      - TRAEFIK_ENTRYPOINTS_https-external_HTTP_TLS_DOMAINS_0_SANS=*.${HOSTNAME}.${DOMAIN_NAME} ## Create wildcard cert for host
+      - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS=${DOMAIN_NAME}                      ## Create cert for internal domain
+      - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS_0_MAIN=${HOSTNAME}.${DOMAIN_NAME}   ## Create cert for host
+      - TRAEFIK_ENTRYPOINTS_https-internal_HTTP_TLS_DOMAINS_0_SANS=*.${HOSTNAME}.${DOMAIN_NAME} ## Create wildcard cert for host
 
     volumes:
       ## Option 1: Using socker proxy defined in the static config file
       ## Option 2 & 3: Direct socket access root or rootless
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"          ## For normal Docker installs (Root)
-      # - ${XDG_RUNTIME_DIR}/docker.sock:/var/run/docker.sock     ## For Docker Rootless connects
+      # - ${DOCKER_SOCK:?}:/var/run/docker.sock                       ## (Option 2/3) Docker rootful/rootless socket determined and exported in .bashrc
       
       #### Config files/folders to control traefik 
       - "${CONTAINER_CONFIG:?}/traefik_static_config.yml:/traefik.yml:ro"
@@ -68,7 +82,7 @@ services:
       #### Dynamic files/folders modified by traefik
       - "${CONTAINER_VOLUME:?}/acme.json:/acme.json"      
       - "${CONTAINER_VOLUME:?}/traefik_access.log:/var/log/traefik_access.log"
-      # - "${CONTAINER_VOLUME:?}/traefik.log:/var/log/traefik.log"      ## Disabled within "traefik.yml" config file, so that logs are viewable/accessible through Docker logs or Portainer.
+      - "${CONTAINER_VOLUME:?}/traefik.log:/var/log/traefik.log"      ## Disabled within "traefik.yml" config file, so that logs are viewable/accessible through Docker logs or Portainer.
       - "${DOCKER_SECRETS}/.htpasswd:/shared/.htpasswd"               ## Only needed for the "auth-basic-traefik" middleware in the dynamic config; breaks services if needed and not present. Double check config, else remove.
     secrets:
       - acme_email
@@ -89,24 +103,28 @@ services:
 
       # Traefik Dashboard
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`)" 
+      # - "traefik.http.routers.traefik.rule=Host(`traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`)" 
+      - "traefik.http.routers.traefik.rule=Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`)" 
       - "traefik.http.routers.traefik.entrypoints=https-internal"     ## Only available for the internal network
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt_dns"  ## Options: letsencrypt_testing; letsencrypt; letsencrypt_dns 
       - "traefik.http.routers.traefik.tls.domains[0].main=traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}"
-      - "traefik.http.routers.traefik.tls.domains[0].sans=*.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}"
+      # - "traefik.http.routers.traefik.tls.domains[0].sans=*.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}"
+      - "traefik.http.routers.traefik.tls.domains[1].main=${HOSTNAME:?}.${DOMAIN_NAME:?}"
       - "traefik.http.routers.traefik.middlewares=auth-basic-traefik@file"
 
   whoami:
     image: traefik/whoami:v1.10.2
     container_name: "whoami"
+    depends_on:
+      - traefik
     networks:
       - proxy
     labels:
       - "traefik.enable=true"
       # - "traefik.http.routers.whoami.rule=Host(`whoami.${HOSTNAME:?}.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))"
-      # - "traefik.http.routers.whoami.rule=(Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))"  ## HOST rule needed to remove the WRN message in logs 
-      - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+      - "traefik.http.routers.whoami.rule=(Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))"  ## HOST rule needed to remove the WRN message in logs 
+      # - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
       - "traefik.http.routers.whoami.priority=1000"
       - "traefik.http.routers.whoami.priority=1000"
       - "traefik.http.routers.whoami.entrypoints=https-internal"     ## Only available for the internal network
