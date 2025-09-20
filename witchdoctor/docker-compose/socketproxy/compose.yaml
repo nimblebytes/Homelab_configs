@@ -2,7 +2,7 @@
 networks:
   socketproxy:
     name: socketproxy
-    internal: true
+    internal: "true"
     ipam:
       config:
         - subnet: 172.31.0.0/24
@@ -25,13 +25,14 @@ services:
       socketproxy: {}
     security_opt:
       - no-new-privileges:true
-    # ports:                                                  ## No ports need to be openned, if used in an docker network
-      # - "127.0.0.1:2375:2375"                               ## Safer: Expose port 2375 should only exposed to the local host
-      # - "2375:2375"                                         ## Danger: Expose port 2375 to the (local) network only with proper firewall rules in place
+    expose: "2375"                                            ## Expose port on docker network only, not host
+    # ports:                                                  ## No ports need to be opened, see "expose"
+      # - "127.0.0.1:2375:2375/tcp"                           ## Safer: Expose port 2375 should only exposed to the local host
+      # - "2375:2375/tcp"                                     ## Danger: Expose port 2375 to the (local) network only with proper certs & firewall rules in place
 
     volumes:
-      - ${DOCKER_SOCK:?}:/var/run/docker.sock               ## Docker rootful/rootless socket determined and exported in .bashrc        
-      
+      - ${DOCKER_SOCK:?}:/var/run/docker.sock               ## Docker rootful/rootless socket determined and exported in .bashrc      
+
     environment:
       - LOG_LEVEL=info # debug,info,notice,warning,err,crit,alert,emerg
       ## Grant access=1; revoke=0
