@@ -10,7 +10,7 @@ services:
   certwarden:
     image: ghcr.io/gregtwallace/certwarden:${IMAGE_TAG:-latest}
     container_name: "${CONTAINER_NAME:-certwarden}"
-    user: ${DOCKER_PUID:?}:${DOCKER_PGID:?}
+    user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}
     restart: unless-stopped
     networks:
       proxy: {}

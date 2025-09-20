@@ -1,0 +1,23 @@
+tcp:                                    ## TCP routers take precedance over HTTP routers
+  routers:
+    nas-tcp-externalurl:
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - http-external                 ## Check if unecryption http is needed with TLS passthrough?
+        - https-external                ## Service is available externally
+      # rule: 'HostSNI( `{{ env "CUSTOM_URL_NAS_PUBLIC_FILE" }}`)' ## HostSNI used as the domain is different and connection is TCP due to encryption
+      rule: HostSNI(`{{ env "CUSTOM_URL_NAS_PUBLIC_FILE" }}`) ## HostSNI used as the domain is different and connection is TCP due to encryption
+      service: nas-server-externalurl   ## The name of the service to link to (see below)
+      tls:
+        passthrough: true
+            
+  services:
+    nas-server-externalurl:             ## Name of the service 
+      loadBalancer:
+        servers:                         
+          # - address: "192.168.1.20:443" ## Front router - Decommission planned
+          # - address: "10.0.31.20:443"   ## DMZ VLAN
+          # - address: "10.0.15.20:443"   ## Apartment VLAN - Firewall block
+          - address: "10.0.32.20:443"   ## App Server VLAN
+                          

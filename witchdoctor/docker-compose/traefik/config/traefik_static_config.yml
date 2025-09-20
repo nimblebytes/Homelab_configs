@@ -59,7 +59,7 @@ entrypoints:
       trustedIPs:
         - "127.0.0.1/32"                ## This is the main/first Proxy, nothing should be trusted in front of it
         # - "10.0.31.1/24"                ## DMZ Network
-        # - "172.27.0.2/32"               ## Traefik - local docker proxy network        
+        # - "172.27.0.250/32"             ## Traefik - local docker proxy network
 
     ## proxyProtocol: Define if PROXY protocol is enabled and used by upstream proxy
     ## Useful for: 
@@ -73,7 +73,7 @@ entrypoints:
         - "10.0.31.2/32"                ## Traefik - Docktopia
         - "10.0.31.10/32"               ## Traefik - Witchdoctor
         - "10.0.32.12/24"               ## Traefik - Dogwood
-        # - "172.27.0.2/32"               ## Traefik - local docker proxy network        
+        # - "172.27.0.250/32"             ## Traefik - local docker proxy network       
 
 
   http-external:                        ## Entrypoint for internet reachable service. Must be added to router/firewall
@@ -109,7 +109,8 @@ entrypoints:
       trustedIPs:
         - "127.0.0.1/32"                ## This is the main/first Proxy, nothing should be trusted in front of it
         # - "10.0.31.1/24"                ## DMZ Network
-        # - "172.27.0.2/32"               ## Traefik - local docker proxy network
+        - "172.27.0.250/32"             ## Traefik - local docker proxy network
+        
 
     ## proxyProtocol: Define if PROXY protocol is enabled and used by upstream proxy
     ## Useful for: 
@@ -123,7 +124,7 @@ entrypoints:
         - "10.0.31.2/32"                ## Traefik - Docktopia
         - "10.0.31.10/32"               ## Traefik - Witchdoctor
         - "10.0.32.12/24"               ## Traefik - Dogwood
-        # - "172.27.0.2/32"               ## Traefik - local docker proxy network        
+        - "172.27.0.250/32"             ## Traefik - local docker proxy network
 
     
     

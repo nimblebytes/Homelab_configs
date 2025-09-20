@@ -1,0 +1,29 @@
+http:                                                       ## http service (options: http, tcp,  udp)
+  routers:
+    eatalot:                                                ## Name of the router
+      entryPoints:                       
+      ## List of entry points to match against 
+      ## All http request are automatically redirected to https. Use only https-* entrypoint to avoid 404 pages
+        - https-internal                                    ## Service is available internally
+        - https-external                                    ## Service is available externally (internet)      
+      rule: 'Host(`eatalot.{{ env "DOMAIN_NAME" }}`)'       ## What rules to match against
+      # priority: 200                                         ## Lower number are matched first. If not provided the rule length is used as priority
+      service: eatalot-server-internalurl                   ## The name of the service to link to (see below)
+      tls:
+        certResolver: letsencrypt_dns                       ## Which certificate resolver to use               
+          
+  services:
+    eatalot-server-internalurl:                             ## Name of the service 
+      loadBalancer:
+        servers:                         
+          # - url: "https://10.0.32.20:443/"                     ## Internal or external url where to find the service
+          - url: "https://eatalot:443/"                     ## Internal or external url where to find the service
+        # serversTransport: eatalot-http-transport            ## Need to specify a server transport, if the backend server is reachable over HTTPS only
+        serversTransport: st_https_eatalot                  ## Need to specify a server transport, if the backend server is reachable over HTTPS only
+          
+  # serversTransports:
+  #   eatalot-http-transport:                                 ## Name of the server transport
+  #     insecureSkipVerify: true                              ## Need to ignore security errors. The backend server has its own TLS certificate, and we do not control the CA cert
+  #     # serverName: '{{ env "CUSTOM_URL_NAS_PUBLIC_FILE" }}'
+  #     serverName: 'eatalot.myqnapcloud.com'
+  #     # serverName: 'eatalot'
