@@ -1,0 +1,66 @@
+########################### NETWORKS
+networks:
+  socketproxy:
+    name: socketproxy
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24 
+          ip_range: 172.31.0.0/24
+          # gateway: 172.31.1.1
+  #         aux_addresses:                                  ## IP Address already in use
+  #           RESERVED_02: 172.31.0.2
+    labels:
+      - "internal.docker.network.description=Docker socket network"          
+
+
+########################### Services     
+services:
+  ## Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
+  dockersocketproxy:
+    container_name: ${CONTAINER_NAME_SOCKETPROXY:-dockersocketproxy}
+    image: ghcr.io/tecnativa/docker-socket-proxy:${IMAGE_TAG_SOCKETPROXY:-latest}
+    restart: unless-stopped
+    networks:
+      - socketproxy
+    security_opt:
+      - no-new-privileges:true
+    # ports:                                                  ## No ports need to be openned, if used in an docker network
+      # - "127.0.0.1:2375:2375"                               ## Safer: Expose port 2375 should only exposed to the local host
+      # - "2375:2375"                                         ## Danger: Expose port 2375 to the (local) network only with proper firewall rules in place
+
+    volumes:
+      - ${DOCKER_SOCK:?}:/var/run/docker.sock               ## Docker rootful/rootless socket determined and exported in .bashrc      
+
+    environment:
+      - LOG_LEVEL=info # debug,info,notice,warning,err,crit,alert,emerg
+      ## Grant access=1; revoke=0
+      ## Granted by Default
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      ## Revoked by Default
+      # Security critical
+      - AUTH=0
+      - SECRETS=0
+      - POST=1 # Watchtower
+      # Not always needed
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1 # Traefik, portainer, etc.
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1 # Portainer
+      - INFO=1 # Portainer
+      - NETWORKS=1 # Portainer
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=1 # Portainer
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=1 # Portainer
+      - VOLUMES=1 # Portainer
+
+  
