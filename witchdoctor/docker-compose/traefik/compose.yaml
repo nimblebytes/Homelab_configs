@@ -40,7 +40,10 @@ services:
     restart: unless-stopped
     networks:
       proxy:
-        ipv4_address: 172.27.0.2                                      ## Needs to be static IP, for configs in other containers to trust forwarded headers
+        ## Assigned static IP (optional). 
+        ##  - To trust forwarded header some container require that trusted 
+        ##    sources (reserve proxies) are define their config setting
+        ipv4_address: 172.27.0.250  
       security: {}                                                    ## Dynamic IP
       socketproxy: {}
     ports:
@@ -103,8 +106,7 @@ services:
     container_name: "error-pages"
     security_opt: [no-new-privileges:true]
     networks:
-      proxy:
-        ipv4_address: 172.27.0.3                                      ## Static IP due to startup dependance. Ensure that Traefik is given their requested IP
+      proxy: {}
     restart: unless-stopped
     ## File containing environment variables to be inserted into the container
     env_file: 
@@ -125,7 +127,7 @@ services:
       # traefik.http.middlewares.error-pages-middleware.errors.query: /{status}.html
       # # define service properties
       # traefik.http.services.error-pages-service.loadbalancer.server.port: 8080
-      
+   
 
   whoami:
     image: traefik/whoami:v1.10.2
