@@ -91,3 +91,8 @@ pull_git_project(){
   git checkout ${var_REPO_BRANCH}                                   ## Checkout the required branch
 
 }
+
+echo "installing git..."
+install_git
+echo "Downloading host project..."
+pull_git_project
