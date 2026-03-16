@@ -1,5 +1,15 @@
 #!/bin/sh
 
+## =============================================================================
+## Script Name: download_cloud_vm_image.sh
+## Description: Downloads the requested cloud OS image. Defaults to Debian 13
+##  - Downloads only newer versions of the image, if available. Can be skipped.
+##  - Patches a copy of the OS, with qemu-guest, and fixes DNS search string 
+##    request. Can be skipped.
+##
+## Author: nimblebytes (GitHub)
+## =============================================================================
+
 # set -x
 
 ## Default values that can be changed

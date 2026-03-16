@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ## =============================================================================
-## Script Name: bootstrap_linux_vm.sh.sh
+## Script Name: bootstrap_linux_vm.sh
 ## Description: Script to automate initial configuration of new systems
 ##  - Repo package updates and upgrades
 ##  - Install Qemu-guest-agent (to interface with Proxmox)
@@ -80,3 +80,15 @@ install_docker_rootful(){
 
 echo "Install script"
 
+bootstrap_scripts
+bootstrap_scripts
+bootstrap_scripts
+https://github.com/nimblebytes/Homelab_configs/tree/0e60813c67b395e62feb1a7874a5d70ea7ebc9af/bootstrap_scripts
+https://github.com/nimblebytes/Homelab_configs/tree/master/bootstrap_scripts/bootstrap_scripts/bootstrap_linux_vm.sh
+https://github.com/nimblebytes/Homelab_configs/bootstrap_scripts/bootstrap_linux_vm.sh 
+
+https://raw.githubusercontent.com/nimblebytes/Homelab_configs/refs/heads/master/bootstrap_scripts/bootstrap_linux_vm.sh
+https://github.com/nimblebytes/Homelab_configs/blob/master/bootstrap_scripts/bootstrap_linux_vm.sh
+
+https://raw.githubusercontent.com/nimblebytes/Homelab_configs/refs/heads/master/bootstrap_scripts/install_host_git_project.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/bootstrap_scripts/install_host_git_project.sh | sh

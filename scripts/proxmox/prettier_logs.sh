@@ -1,9 +1,13 @@
 #!/bin/sh
-## ---------------------------------------------------------------------------
-## Functions to standarize the formats of io/logs outputs.
-## - Provides static variables for standard colours 
-## ---------------------------------------------------------------------------
 
+## =============================================================================
+## !! Provides NO main function !!
+##
+## Functions to standardize the formats of io/logs outputs.
+## - Provides static variables for standard colours 
+##
+## Author: nimblebytes (GitHub)
+## =============================================================================
 
 # Define ANSI color codes
 BLACK=$(printf '\033[30m')

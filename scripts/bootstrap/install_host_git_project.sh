@@ -23,15 +23,14 @@ var_PROJECT_FOLDER="/home/${USER}/git"
 
 
 create_repo_string(){
-
-  var_REPO_STR="https://github.com/${var_GIT_REPO_NAME}/${var_GIT_PROJECT}.git"
-  var_REPO_STR_RAW="https://raw.githubusercontent.com/${var_GIT_REPO_NAME}/${var_GIT_PROJECT}/refs/heads/${var_GIT_BRANCH}"
+  var_REPO_STR="https://github.com/${var_REPO_NAME}/${var_REPO_PROJECT}.git"
+  var_REPO_STR_RAW="https://raw.githubusercontent.com/${var_REPO_NAME}/${var_REPO_PROJECT}/refs/heads/${var_REPO_BRANCH}"
 }
 
 install_git(){
   ## Check if required privileges 
   if ! detect_root_sudo; then
-    echo "Error: Root or sudo priviledges are needed for this script."
+    echo "Error: Root or sudo privileges are needed for this script."
     return 1
   fi
 
@@ -79,20 +78,44 @@ detect_root_sudo(){
 pull_git_project(){
   create_repo_string
 
-  ## Create the project folder if ti does not exist
+  ## Create the project folder if it does not exist
   if [ ! -e ${var_PROJECT_FOLDER} ]; then
-    mkdir -R ${var_PROJECT_FOLDER}
+    mkdir -r "${var_PROJECT_FOLDER}"
+    git clone --no-checkout ${var_REPO_STR} ${var_PROJECT_FOLDER}     ## Clone the Repo to the project folder
+    cd ${var_PROJECT_FOLDER}
+    git sparse-checkout init --cone                                   ## Initialise a sparse checkout
+    git sparse-checkout set ${var_HOSTNAME}                           ## Checkout only folders with host name
+    git checkout ${var_REPO_BRANCH}                                   ## Checkout the required branch
+  else
+    cd ${var_PROJECT_FOLDER}
+
   fi
 
-  git clone --no-checkout ${var_REPO_STR} ${var_PROJECT_FOLDER}     ## Clone the Repo to the project folder
-  cd ${var_PROJECT_FOLDER}
-  git sparse-checkout init --cone                                   ## Initialise a sparse checkout
-  git sparse-checkout set ${var_HOSTNAME}                           ## Checkout only folders with host name
-  git checkout ${var_REPO_BRANCH}                                   ## Checkout the required branch
+
 
 }
 
+pull_git_project_temp(){
+  create_repo_string
+
+  echo "Project folder: ${var_PROJECT_FOLDER}"
+  echo "Repo str: ${var_REPO_STR}"
+set -x
+  ## Create the project folder if it does not exist
+  if [ ! -e ${var_PROJECT_FOLDER} ]; then
+    mkdir -p ${var_PROJECT_FOLDER}
+  fi
+  git clone --no-checkout ${var_REPO_STR} ${var_PROJECT_FOLDER}
+  cd ${var_PROJECT_FOLDER}
+  git sparse-checkout init --cone 
+  git sparse-checkout set ${var_HOSTNAME} 
+  git checkout ${var_REPO_BRANCH}                                   ## Checkout the required branch
+}
+
+## Temporary override
+var_HOSTNAME="docktopia"
+
 echo "installing git..."
-install_git
+#install_git
 echo "Downloading host project..."
-pull_git_project
+pull_git_project_temp

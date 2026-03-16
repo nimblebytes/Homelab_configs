@@ -1,5 +1,13 @@
 #!/bin/sh
 
+## =============================================================================
+## Script Name: create_vm.sh
+## Description: Creates a VM using the default embedded parameters
+##  - Possible inputs: VM name, VM ID, Template ID
+##
+## Author: nimblebytes (GitHub)
+## =============================================================================
+
 # set -x
 
 ## Default values that can be changed

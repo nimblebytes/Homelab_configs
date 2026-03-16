@@ -1,4 +1,4 @@
-# How-to Indentify the physical network interfaces
+# How-to Identify the physical network interfaces
 
 If a computer has multiple physical network interfaces and the way that linux names and presents this information, it can be challenging to correlate the two together. 
 

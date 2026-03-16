@@ -1,5 +1,13 @@
 #!/bin/sh
 
+## =============================================================================
+## Script Name: create_pve_template.sh
+## Description: Creates a PVE template with the embedded default parameters
+##  - Possible inputs: OS Image, template name, template number
+##
+## Author: nimblebytes (GitHub)
+## =============================================================================
+
 # set -x
 
 ## Default values that can be changed
@@ -135,7 +143,7 @@ create_template(){
 ## Usage function
 ## ------------------------------------------------------------------------------------------------
 usage(){
-  printf "Script to create VM tempaltes with minimal requirements and specific default values.\n"
+  printf "Script to create VM templates with minimal requirements and specific default values.\n"
   printf "Usage:\n"
   printf "  %s[-f] [-v] -i <FILE_PATH> -n <NUMBER> -N <STRING> \n" "${0##*/}"
   printf "  %s -h | --help \n" "${0##*/}"
