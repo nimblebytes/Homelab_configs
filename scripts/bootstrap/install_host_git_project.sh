@@ -27,6 +27,8 @@ LOGGER_FILE="${LOGGER_FILE:-}"
 
 PROJECT_FOLDER="/opt/git"
 SUDO=""
+REAL_USER=${SUDO_USER:-$(id -un)}
+REAL_GROUP=$(id -gn "$REAL_USER")
 
 ## =============================================================================
 ## Fallback Logging
@@ -148,8 +150,9 @@ pull_git_project_temp(){
   create_repo_string
   
   ## Create the project folder if it does not exist
-  if [ ! -e ${PROJECT_FOLDER} ]; then
-    mkdir -p ${PROJECT_FOLDER}
+  if [ ! -e "$PROJECT_FOLDER" ]; then
+    "$SUDO" mkdir -p "$PROJECT_FOLDER"
+    "$SUDO" chown "$REAL_USER:$REAL_GROUP" "$PROJECT_FOLDER"
   fi
   git clone --no-checkout ${REPO_STR} ${PROJECT_FOLDER}
   cd ${PROJECT_FOLDER}
