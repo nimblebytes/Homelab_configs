@@ -73,24 +73,19 @@ EOF
 }
 
 ## =============================================================================
-## Loader got a external Logger helper
+## Load an external Logger helper
 ## Sources better_logs.sh if available. Falls back silently to the stubs above.
 ## =============================================================================
 load_logger(){
-
   if [ -f "${LOGGER_FILE:-}" ]; then 
-    log_info "Attempting to load logger: ${LOGGER_FILE}..."
     . $LOGGER_FILE
-
-    ## Re-assert LOG_FILE so the sourced library picks up our path
-    LOG_FILE="$LOG_FILE"
-
     if log_file_init; then 
       log_ok "Logger: ${LOGGER_FILE} loaded successfully."
     else
       log_warn "Logger: ${LOGGER_FILE} loaded, but the log file failed to initialize. Logging to file is disabled.\n"
     fi
   fi
+}
 }
 
 ## =============================================================================
@@ -511,6 +506,7 @@ parse_args() {
 ## Main
 ## =============================================================================
 main() {
+
   parse_args "$@"
   load_logger
 
