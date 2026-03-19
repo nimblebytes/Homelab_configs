@@ -45,12 +45,18 @@ log_banner()  { printf '=== %s ===\n' "$*"; }
 log_divider() { printf '%s\n' '---------------------------------------------'; }
 
 
-
+## =============================================================================
+## Create git repo and git raw strings
+## Allows using a config file or override file to redefine the git repo to use
+## =============================================================================
 create_repo_string(){
   REPO_STR="https://github.com/${REPO_ORG}/${REPO_PROJECT}.git"
   REPO_STR_RAW="https://raw.githubusercontent.com/${REPO_ORG}/${REPO_PROJECT}/refs/heads/${REPO_BRANCH}"
 }
 
+## =============================================================================
+## Install Git
+## =============================================================================
 install_git(){
   ## Check if required privileges 
   if ! detect_root_sudo; then
@@ -80,7 +86,9 @@ install_git(){
   return 0
 }
 
+## =============================================================================
 ## Detect sudo requirement
+## =============================================================================
 detect_root_sudo(){
   ## Get the UID of the user, to check if running as root
   UID_RESULT=`id -u 2>/dev/null`
@@ -99,7 +107,9 @@ detect_root_sudo(){
   return 0
 }
 
+## =============================================================================
 ## Load config setting and overrides, if the files exists
+## =============================================================================
 load_config(){
   if [ -f "${CONFIG_FILE:-}" ]; then 
     . $CONFIG_FILE
@@ -130,20 +140,79 @@ load_logger(){
   fi
 }
 
-pull_git_project(){
+## =============================================================================
+## Manages the creation and ownership of the git destination directory, setup 
+## of the spare checkout for the host specific folder (or overrides) and pulls
+## the repo
+## =============================================================================
+pull_git_project() {
   create_repo_string
 
-  ## Create the project folder if it does not exist
-  if [ ! -e ${PROJECT_FOLDER} ]; then
-    mkdir -r "${PROJECT_FOLDER}"
-    git clone --no-checkout ${REPO_STR} ${PROJECT_FOLDER}     ## Clone the Repo to the project folder
-    cd ${PROJECT_FOLDER}
-    git sparse-checkout init --cone                                   ## Initialise a sparse checkout
-    git sparse-checkout set ${HOSTNAME}                           ## Checkout only folders with host name
-    git checkout ${REPO_BRANCH}                                   ## Checkout the required branch
-  else
-    cd ${PROJECT_FOLDER}
+  log_step "Preparing project folder: $PROJECT_FOLDER"
+
+  if [ ! -e "$PROJECT_FOLDER" ]; then
+    log_info "Folder does not exist — creating and cloning..."
+
+    GIT_OUT=$("$SUDO" mkdir -p "$PROJECT_FOLDER" 2>&1)
+    if [ $? -ne 0 ]; then
+      log_error "Failed to create project folder: $PROJECT_FOLDER"
+      [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+      return 1
+    fi
   fi
+
+  GIT_OUT=$("$SUDO" chown "$REAL_USER:$REAL_GROUP" "$PROJECT_FOLDER" 2>&1)
+  if [ $? -ne 0 ]; then
+    log_error "Failed to set ownership on: $PROJECT_FOLDER"
+    [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+    return 1
+  fi
+
+  if [ ! -d "$PROJECT_FOLDER/.git" ]; then
+    log_info "Cloning repository (no-checkout)..."
+    GIT_OUT=$(git clone --quiet --no-checkout $REPO_STR $PROJECT_FOLDER 2>&1)
+    if [ $? -ne 0 ]; then
+      log_error "git clone failed for: $REPO_STR"
+      [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+      return 1
+    fi
+    [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
+  fi
+
+  log_info "Changing into project folder..."
+  if ! cd "$PROJECT_FOLDER"; then
+    log_error "Failed to cd into: $PROJECT_FOLDER"
+    return 1
+  fi
+
+  log_info "Initialising sparse-checkout (cone mode)..."
+  GIT_OUT=$(git sparse-checkout init --cone 2>&1)
+  if [ $? -ne 0 ]; then
+    log_error "git sparse-checkout init failed"
+    [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+    return 1
+  fi
+  [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
+
+  log_info "Setting sparse-checkout path: $REPO_SERVER_PROJ"
+  GIT_OUT=$(git sparse-checkout set $REPO_SERVER_PROJ 2>&1)
+  if [ $? -ne 0 ]; then
+    log_error "git sparse-checkout set failed for: $REPO_SERVER_PROJ"
+    [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+    return 1
+  fi
+  [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
+
+  log_info "Checking out branch: $REPO_BRANCH"
+  GIT_OUT=$(git checkout --quiet "$REPO_BRANCH" 2>&1)
+  if [ $? -ne 0 ]; then
+    log_error "git checkout failed for branch: $REPO_BRANCH"
+    [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
+    return 1
+  fi
+  [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
+
+  log_ok "Project ready at: $PROJECT_FOLDER (branch: $REPO_BRANCH)"
 }
 
 pull_git_project_temp(){
@@ -152,8 +221,9 @@ pull_git_project_temp(){
   ## Create the project folder if it does not exist
   if [ ! -e "$PROJECT_FOLDER" ]; then
     "$SUDO" mkdir -p "$PROJECT_FOLDER"
-    "$SUDO" chown "$REAL_USER:$REAL_GROUP" "$PROJECT_FOLDER"
   fi
+  "$SUDO" chown "$REAL_USER:$REAL_GROUP" "$PROJECT_FOLDER"
+
   git clone --no-checkout ${REPO_STR} ${PROJECT_FOLDER}
   cd ${PROJECT_FOLDER}
   git sparse-checkout init --cone 
@@ -244,13 +314,15 @@ parse_args() {
 ## =============================================================================
 main(){
   parse_args "$@"
+  detect_root_sudo
   load_logger
   load_config
   log_step "Installing git..."
   #install_git
-  echo "Downloading host project..."
   log_step "Downloading host project..."
-  pull_git_project_temp
+  
+  pull_git_project
+  # pull_git_project_temp
 }
 
 ## Temporary override
