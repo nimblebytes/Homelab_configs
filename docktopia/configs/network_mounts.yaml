@@ -1,0 +1,43 @@
+mounts:
+## NFS mount syntax. Note: 
+## > Only "name" gets the leading dash "-"
+## > For "source", smb requires the leading "//"
+## > "user_profile" defines/groups a user credential profile to be used for
+##   the network share. This allows credentials to be defined per share point
+##   or reused for multiple shares. Credentials only need to be provided when
+##   the script runs.
+##
+#  - name: <human-friendly_name>
+#    type: smb
+#    source: //<IP;FQDN;hostname>/<smb_mount_folder>
+#    target: /path/to/end/mount/
+#    user_profile: <NAME>
+
+  - name: media
+    type: smb
+    source: //eatalot/media
+    target: /mnt/media
+    user_profile: profile1
+
+  - name: backups
+    type: smb
+    source: //eatalot/backups
+    target: /mnt/backups
+    user_profile: profile1
+
+
+## NFS mount syntax. Note: 
+## > Only "name" gets the leading dash "-"
+## > For "source" parameter:
+##   > do NOT add leading "//"
+##   > a ":" separator must be added after the IP; FQDN; or Hostname
+##
+#  - name: <human-friendly_name>
+#    type: nfs
+#    source: <IP;FQDN;hostname>:/<nfs_mount_folder>
+#    target: /path/to/end/mount/
+
+  - name: bootstrap
+    type: nfs
+    source: eatalot:/linux_bootstrap
+    target: /mnt/bootstrap
