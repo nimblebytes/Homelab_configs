@@ -13,6 +13,23 @@
 ##                          (default: /tmp/bootstrap_<pid>)
 ##   --non-interactive      Skip dialogs and use built-in defaults
 ##   --help                 Show this help message
+##
+## *****************************************************************************
+## ** IMPORTANT - Adding install features scripts **
+## 
+## To add or remove features to be installed via scripts, the following places
+## need to be updated:
+##  - collect_services_to_install
+##    -> In the Dialog box section, add or remove the feature name, incl. if it 
+##       is to be selected by default
+##    -> In the case statement, add to remove the name of the script; (optional)
+##       define the parameters to run the script with.
+##    -> (Optional) Call function to collect feature settings in the case statement
+##  - Main
+##    -> The feature is to be installed by default, in the if satement for 
+##       non-interactive installs add it to selected tools list
+##  - collect_<FEATURE>_config
+##    -> (Optional) Create a function to collect the feature specific settings
 ## =============================================================================
 
 set -eu
@@ -339,11 +356,13 @@ collect_services_to_install() {
         collect_git_config
         ;;
       docker)
-        write_cfg "SCRIPT_${TOOL}" "install_docker"
+        write_cfg "SCRIPT_${TOOL}" "install_docker.sh"
+        write_cfg "ARGS_${TOOL}"   "--docker-rootful"
+        # write_cfg "ARGS_${TOOL}"   "--parent-config $CONFIG_FILE --logger $BETTER_LOGS_LOCAL --docker-rootful"
         collect_docker_config
         ;;
       nfs_samba)
-        write_cfg "SCRIPT_${TOOL}" "install_nfs"
+        write_cfg "SCRIPT_${TOOL}" "install_host_network_shares.sh"
         collect_network_config
         ;;
       ansible)
@@ -438,6 +457,7 @@ collect_docker_config() {
 ## =============================================================================
 run_script() {
   SCRIPT_NAME="$1"
+  TOOL_ARGS="${2:-}"
   LOCAL_PATH="${SCRIPT_DIR}/${SCRIPT_NAME}"
   REMOTE_URL="${REPO_BOOTSTRAP_BASE_URL}/${SCRIPT_NAME}"
   
@@ -452,12 +472,16 @@ run_script() {
   # (
     export CONFIG_FILE="$CONFIG_FILE"
     export LOGGER_FILE="$BETTER_LOGS_LOCAL"
-    sh "$LOCAL_PATH"
+    ## TOOL_ARGS is defined in collect_services_to_install
+    ## TOOL_ARGS is unquoted so the shell word-splits it into individual
+    ## flag/value tokens.
+    sh "$LOCAL_PATH" $TOOL_ARGS
   # ) | tee -a "$LOG_FILE"
   log_ok "Finished: ${SCRIPT_NAME}"
 }
 
 run_selected_scripts() {
+  ## Reload the config to refresh the SCRIPT_* and ARGS_* variables
   . "$CONFIG_FILE"
 
   log_step "Beginning installation phase for: $SELECTED_TOOLS"
@@ -470,11 +494,12 @@ run_selected_scripts() {
     ## eval is used to resolve the variable name built from SCRIPT_<TOOL>;
     ## this is safe here because TOOL values come from a fixed case list.
     eval "TOOL_SCRIPT=\${SCRIPT_${TOOL}:-}"
+    eval "TOOL_ARGS=\${ARGS_${TOOL}:-}"
 
     if [ -z "$TOOL_SCRIPT" ]; then
       log_warn "No script mapped for tool: $TOOL — skipping."
     else
-      if ! run_script "$TOOL_SCRIPT"; then
+      if ! run_script "$TOOL_SCRIPT" "$TOOL_ARGS"; then
         log_warn "$TOOL_SCRIPT reported an error — continuing."
       fi
     fi
@@ -581,6 +606,7 @@ main() {
   init_config
   load_config_overrides
 
+  ## Define the feature that need to be installed by default when non-interactive
   if [ "$NON_INTERACTIVE" = "true" ]; then
     log_warn "Non-interactive mode: using built-in defaults, skipping dialogs."
     write_cfg SELECTED_TOOLS "git nfs_samba"
