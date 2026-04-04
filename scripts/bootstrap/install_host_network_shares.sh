@@ -662,7 +662,7 @@ change_credentials() {
     | run_cmd systemd-creds encrypt --name="${PROFILE}.cred" /dev/stdin "$CRED_FILE"
 
   log_info "Credentials updated for: $PROFILE"
-  run_cmd systemctl daemon-reexec
+  run_cmd systemctl daemon-reload
   run_cmd systemctl restart smb-mounts.target
 }
 
