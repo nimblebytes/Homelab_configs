@@ -2,7 +2,7 @@
 ## =============================================================================
 ## bootstrap.sh — VM Bootstrap Entry Point
 ## POSIX-compliant. Downloaded and executed on a fresh VM via:
-##   wget -qO- https://raw.githubusercontent.com/<org>/<repo>/main/bootstrap.sh | sh
+##   wget -qO - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sh
 ##
 ## Usage: bootstrap.sh [OPTIONS]
 ##   --repo-url <url>       Base URL for install scripts
@@ -26,7 +26,7 @@
 ##       define the parameters to run the script with.
 ##    -> (Optional) Call function to collect feature settings in the case statement
 ##  - Main
-##    -> The feature is to be installed by default, in the if satement for 
+##    -> The feature is to be installed by default, in the if statement for 
 ##       non-interactive installs add it to selected tools list
 ##  - collect_<FEATURE>_config
 ##    -> (Optional) Create a function to collect the feature specific settings
@@ -108,10 +108,10 @@ Examples:
   sudo sh bootstrap.sh --repo-url https://example.com/scripts --log-file /tmp/boot.log
 
   ## Pipe from wget — interactive:
-  wget -qO- https://example.com/bootstrap.sh | sudo sh
+  wget -qO- https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sudo sh
 
   ## Pipe from wget — non-interactive (uses all defaults):
-  wget -qO- https://example.com/bootstrap.sh | sudo sh -s -- --non-interactive
+  wget -qO- https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sudo sh -s -- --non-interactive
 
 Environment:
   All collected values are written to a mode-600 temp file and sourced
@@ -594,10 +594,8 @@ main() {
   #clear
 
   ## Preflight runs first so WORK_DIR exists before we try to download anything
-  set -x
   pkg_update
   preflight_checks
-  exit
 
   ## Now WORK_DIR exists — attempt to upgrade to pretty logging
   load_better_logs
