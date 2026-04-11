@@ -17,6 +17,7 @@ HOSTNAME=${HOSTNAME}
 REPO_ORG=nimblebytes
 REPO_PROJECT=Homelab_configs
 REPO_BRANCH=master
+REPO_SERVER_PROJ=${HOSTNAME}            ## Which folder (system name) in the repository to use
 REPO_STR=""
 REPO_STR_RAW=""
 
@@ -117,9 +118,9 @@ load_config(){
 
   if [ -f "$PWD/override.config" ]; then
     . $PWD/override.config
-    log_info "Config override file loaded: $PWD/override.config"
+    log_warn "Config override file loaded: $PWD/override.config"
   elif [ -f "$WORK_DIR/override.config" ]; then
-    log_info "Config override file loaded: $WORK_DIR/override.config"
+    log_warn "Config override file loaded: $WORK_DIR/override.config"
   fi
 }
 
@@ -194,7 +195,8 @@ pull_git_project() {
   fi
   [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
 
-  log_info "Setting sparse-checkout path: $REPO_SERVER_PROJ"
+  ## Checkout only the folder with the system host name
+  log_info "Setting sparse-checkout path: ${REPO_SERVER_PROJ:-<REPO_SERVER_PROJ is empty>}"
   GIT_OUT=$(git sparse-checkout set $REPO_SERVER_PROJ 2>&1)
   if [ $? -ne 0 ]; then
     log_error "git sparse-checkout set failed for: $REPO_SERVER_PROJ"
@@ -213,22 +215,6 @@ pull_git_project() {
   [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
 
   log_ok "Project ready at: $PROJECT_FOLDER (branch: $REPO_BRANCH)"
-}
-
-pull_git_project_temp(){
-  create_repo_string
-  
-  ## Create the project folder if it does not exist
-  if [ ! -e "$PROJECT_FOLDER" ]; then
-    "$SUDO" mkdir -p "$PROJECT_FOLDER"
-  fi
-  "$SUDO" chown "$REAL_USER:$REAL_GROUP" "$PROJECT_FOLDER"
-
-  git clone --no-checkout ${REPO_STR} ${PROJECT_FOLDER}
-  cd ${PROJECT_FOLDER}
-  git sparse-checkout init --cone 
-  git sparse-checkout set ${HOSTNAME} 
-  git checkout ${REPO_BRANCH}                                   ## Checkout the required branch
 }
 
 ## =============================================================================
@@ -317,14 +303,12 @@ main(){
   detect_root_sudo
   load_logger
   load_config
-  log_step "Installing git..."
-  #install_git
-  log_step "Downloading host project..."
   
+  log_step "Installing git..."
+  install_git
+
+  log_step "Downloading host project..."  
   pull_git_project
-  # pull_git_project_temp
 }
 
-## Temporary override
-HOSTNAME="docktopia"
 main "$@"
