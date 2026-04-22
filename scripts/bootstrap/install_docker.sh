@@ -288,14 +288,14 @@ EOF
   log_step "Converting to Docker rootless"
   
   ## Install dependencies
-  ## uidmap - provided subordniate UIDs/GIDs
+  ## uidmap - provided subordinate UIDs/GIDs
   ## dbus-user-session - (Ubuntu recommended) D-Bus session bus for user 
   ##    sessions for running services like docker
   ## slirp4netns - provides network & port drivers. Can resolve source IP 
-  ##    progagation issues. See https://docs.docker.com/engine/security/rootless/troubleshoot/#networking-errors
+  ##    propagation issues. See https://docs.docker.com/engine/security/rootless/troubleshoot/#networking-errors
   ## docker-ce-rootless-extras - provides the official docker rootless install
   ##    script.
-  log_info "Installing docker dependancies"
+  log_info "Installing docker dependencies"
   "$SUDO" apt update -y -qq >/dev/null 2>&1
   for pkg in uidmap dbus-user-session slirp4netns docker-ce-rootless-extras; do 
     "$SUDO" apt-get install -y -qq $pkg >/dev/null 2>&1 || \
@@ -536,47 +536,20 @@ modify_bashrc_file() {
   case "$OPTIONS" in
     add)
       # Only add if not already present
+      TMP=$(mktemp)
       if ! grep -Fq "$START_MARK" "$FILE"; then
-        cat >> "$FILE" <<'EOF'
-
-## >>> DOCKER DETECT BLOCK >>>
-## Function to determine Docker installation type
-detect_docker_install_type() {
-  # Check if docker is installed
-  if ! command -v docker > /dev/null 2>&1; then
-    DOCKER_TYPE="none"
-    DOCKER_SOCK=""
-    return
-  else
-    DOCKER_CONTEXT=$(docker context show 2>/dev/null)
-    SOCKET=$(docker context inspect "${DOCKER_CONTEXT:-default}" --format '{{.Endpoints.docker.Host}}' 2>/dev/null)
-    case "$SOCKET" in
-      unix:///run/user/*/docker.sock)
-        DOCKER_TYPE="rootless"
-        DOCKER_SOCK=$(expr "$SOCKET" : 'unix://\(.*\)')
-        ;;
-      unix://*)
-        DOCKER_TYPE="rootful"
-        DOCKER_SOCK=$(expr "$SOCKET" : 'unix://\(.*\)')
-        ;;
-      *)
-        DOCKER_TYPE="unknown (unexpected context: $DOCKER_CONTEXT)"
-        DOCKER_SOCK="$SOCKET"
-        ;;
-    esac
-  fi
-}
-
-## Determine and export Docker install type variables
-detect_docker_install_type
-export DOCKER_TYPE
-export DOCKER_SOCK
-export PATH=/usr/bin:$PATH
-export DOCKER_HOST1=unix:///run/user/$(id -u)/docker.sock
-export DOCKER_HOST2=unix://$XDG_RUNTIME_DIR/docker.sock
-# <<< DOCKER DETECT BLOCK <<<
-EOF
+        ## Retrieve the .bashrc stub file for docker installs      
+        if wget -qO "$TMP" "https://raw.githubusercontent.com/nimblebytes/Homelab_configs/refs/heads/master/common_configs/.bashrc.docker"; then
+          {
+              printf "%s\n" "$START_MARK"
+              cat "$TMP"
+              printf "%s\n" "$END_MARK"
+          } >> "$FILE"
+        else
+            echo "Download failed — nothing written" >&2
+        fi
       fi
+      rm -f "$TMP"
       ;;
 
     remove)
