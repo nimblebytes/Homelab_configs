@@ -25,7 +25,7 @@ DEF_PATH_DIR_ISO=/var/lib/vz/template/iso           ## The location depends on t
 
 ## ## Variables used in the script
 DEF_OS_IMAGE=""
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && $PWD)
 
 ## Download the lastest OS Image and patch it
 ${SCRIPT_DIR}/download_cloud_vm_image.sh -S -${DEF_DOWNLOAD_OS_TYPE}
