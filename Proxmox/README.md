@@ -4,7 +4,7 @@ This document maintains a list of useful information around managed various aspe
 
 1. Essential documentations
    1. [Checklist: Proxmox post-installation tasks](./docs/proxmox_post_install_tasks.md)
-   2. [Checklist: new VM configuration](./docs/proxmox_new_VM_checklist.md)
+   2. [Checklist: new VM configuration](../docs/new_system_checklist.md)
    3. [How-to: configure Proxmox networks and vlans](./docs/proxmox_understanding_networks.md)
    4. [How-to: identify network interface](./docs/how-to-Identify-network-interface.md)
 2. Advanced topics
