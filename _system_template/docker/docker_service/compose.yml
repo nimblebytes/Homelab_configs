@@ -1,0 +1,45 @@
+########################### STACK PROPERTIES
+name: "<PROJECT_NAME>"
+
+########################### NETWORKS
+# networks:
+#   proxy:
+#     name: proxy
+#     external: "true" 
+
+########################### SECRETS
+# secrets:
+#   PROJECT_SECRET1:
+#     file: ${DOCKER_SECRETS:?}/<PROJECT_SECRETS>
+
+########################### SERVICES  
+services:
+  <PROJECT_NAME>:
+    image: <REPO/SERVICE>:${IMAGE_TAG:-latest}
+    container_name: "${CONTAINER_NAME:-<PROJECT_NAME>}"
+    restart: unless-stopped
+    # user: ${PUID_DOCKER:?}:${PGID_DOCKER:?}       ## Overrides the user used to run the container process. Will cause permission erros for container that do not support changing the running UID/GID
+    # networks:
+    #   proxy: {}
+    ports:
+      - "${HOST_IP:?}:<PORT_NUMBER>:<PORT_NUMBER>"
+    ## File containing environment variables to be inserted into the container
+    # env_file: 
+    #   - .env.<PROJECT_NAME>
+    environment:
+      TZ: ${TZ:-Europe/Berlin}    
+    ## Add secrets needed by the container
+    # secrets:
+    #   - PROJECT_SECRET1 
+    volumes:
+      - "${DOCKER_VOLUMES:?}/<PROJECT_NAME>/data:/data" 
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.<PROJECT_NAME>.entrypoints: https-internal    ## "https-internal"; or "https-external"; or additional traefik router/s needed for different config
+      traefik.http.routers.<PROJECT_NAME>.rule: Host(`<PROJECT_NAME>.${DOMAIN_NAME:-home.arpa}`)"
+      traefik.http.routers.<PROJECT_NAME>.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.<PROJECT_NAME>.service: <PROJECT_NAME>
+      traefik.http.services.<PROJECT_NAME>.loadbalancer.server.url: "http://${CONTAINER_NAME:-<PROJECT_NAME>}:<PORT_NUMBER>"   ## Access the service at the docker network level
+      # traefik.http.services.<PROJECT_NAME>.loadbalancer.server.url: http://${HOST_IP:?}:<PORT_NUMBER>    ## Access the service at the host network level
+      
