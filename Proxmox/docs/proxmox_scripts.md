@@ -19,17 +19,17 @@ This folder contains several scripts to help to automate repetitive and debuggin
 Use the following command to download all the template and VM automation scripts:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/download_proxmox_scripts.sh | sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/download_proxmox_scripts.sh | sh
 ```
 
 This will download all the scripts into `/usr/local/lib/scripts_cloud_init`.
 
 ### Download OS images
 
-View the [download cloud VM script](/scripts/Proxmox/download_cloud_vm_image.sh) or download with:
+View the [download cloud VM script](/scripts/proxmox/download_cloud_vm_image.sh) or download with:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/download_cloud_vm_image.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/download_cloud_vm_image.sh
 ```
 
 Handles downloading different OS types and versions. However, only supports _cloud AMD64_ builds, which are are best suit for headless VMs in Proxmox and support configuration via _cloud init_. Additional features:
@@ -42,10 +42,10 @@ This script can be run with ``cron`` this ensure that new VMs always use the mos
 
 ### Create Proxmox VM template
 
-View the [create PVE template script](/scripts/Proxmox/create_pve_template.sh) or download with:
+View the [create PVE template script](/scripts/proxmox/create_pve_template.sh) or download with:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/create_pve_template.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/create_pve_template.sh
 ```
 
 Uses the Proxmox APIs to safely create a template using the embedded configuration.
@@ -58,10 +58,10 @@ Uses the Proxmox APIs to safely create a template using the embedded configurati
    
 ### Create a VM
 
-View the [create a VM script](/scripts/Proxmox/create_vm.sh) or download with:
+View the [create a VM script](/scripts/proxmox/create_vm.sh) or download with:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/create_vm.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/create_vm.sh
 ```
 
 Build a new VM or replaces an existing VM, using the template provided as input.
@@ -70,16 +70,16 @@ Build a new VM or replaces an existing VM, using the template provided as input.
 
 The scripts can be chained together to automate the build process of VM templates or VM themselves. 
 
-Here is an example to create a [VM template based on Debian 13](/scripts/Proxmox/build_debian13_template.sh) that is patched to include DNS search parameters, if using DHCP. Download it with:
+Here is an example to create a [VM template based on Debian 13](/scripts/proxmox/build_debian13_template.sh) that is patched to include DNS search parameters, if using DHCP. Download it with:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/build_debian13_template.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/build_debian13_template.sh
 ```
 
-Here is an example to [build a Test VM (labrat)](/scripts/Proxmox/build_test_labrat_vm.sh). This script defines and builds a template for this particular VM. It could also be simplified by being chained to use the [build template script](/scripts/Proxmox/build_debian13_template.sh). Download with:
+Here is an example to [build a Test VM (labrat)](/scripts/proxmox/build_test_labrat_vm.sh). This script defines and builds a template for this particular VM. It could also be simplified by being chained to use the [build template script](/scripts/proxmox/build_debian13_template.sh). Download with:
 
 ```console
-wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/build_test_labrat_vm.sh
+wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/build_test_labrat_vm.sh
 ```
 
 Example script on how to chain the scripts to create a build pipeline, so that a new OS release is automatically converted into a template and a new VM built and started.

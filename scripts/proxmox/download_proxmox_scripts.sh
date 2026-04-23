@@ -8,7 +8,7 @@
 ## Author: nimblebytes (GitHub)
 ## =============================================================================
 
-SOURCE_REPO=https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/Proxmox/
+SOURCE_REPO=https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/
 TARGET_FOLDER=/usr/local/lib/scripts_cloud_init
 
 PROXMOX_SCRIPTS="download_cloud_vm_image.sh create_pve_template.sh create_vm.sh build_test_labrat_vm.sh build_debian13_template.sh"
