@@ -11,27 +11,22 @@
 SOURCE_REPO=https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/
 TARGET_FOLDER=/usr/local/lib/scripts_cloud_init
 
+PROXMOX_SCRIPTS="download_cloud_vm_image.sh create_pve_template.sh create_vm.sh build_test_labrat_vm.sh build_debian13_template.sh"
+
 mkdir -p "$TARGET_FOLDER"
 cd "$TARGET_FOLDER"
 
-wget -q -N --show-progress \
-  "${SOURCE_REPO}/download_cloud_vm_image.sh" \
-  "${SOURCE_REPO}/create_pve_template.sh" \
-  "${SOURCE_REPO}/create_vm.sh" \
-  "${SOURCE_REPO}/build_test_labrat_vm.sh" \
-  "${SOURCE_REPO}/build_debian12_template_vm.sh" \
-  "https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/lib/better_logs.sh"
+for SCRIPT in $PROXMOX_SCRIPTS; do
+  wget -q -N --show-progress "${SOURCE_REPO}/${SCRIPT}"
+  if [ -f ${SCRIPT} ]; then 
+    chmod +x ${SCRIPT}
+  else
+    printf "Warn: failed to download script: %s\n" "$SCRIPT"
+  fi
+done
 
-if [ $? -ne 0 ]; then 
-  printf "Failed to download the files. Exiting."
-  exit
-fi
-
-chmod +x \
-  download_cloud_vm_image.sh \
-  create_pve_template.sh \
-  create_vm.sh \
-  build_test_labrat_vm.sh
+## Just download this helper library (from a different repo folder), but do not make it executable
+wget -q -N --show-progress "https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/lib/better_logs.sh"
 
 printf "Scripts downloaded into folder: %s\n" "$TARGET_FOLDER"
 
