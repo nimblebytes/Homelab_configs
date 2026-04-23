@@ -6,12 +6,12 @@ Also contains general documentation; documentation for Proxmox setup, configurat
 
 ## Proxmox documentation
 
-The [Proxmox general documentation, issues & links](./proxmox/README.md) provide the starting point for documentation and resources for:
+The [Proxmox general documentation, issues & links](./Proxmox/README.md) provide the starting point for documentation and resources for:
  - Proxmox installation and post-installation steps
  - Checklist of setting up a new VM/LXCs
  - Resolving Proxmox or VM issues
 
-The following page discuss the various [Proxmox automation scripts](./proxmox/docs/proxmox_scripts.md) that are available and how to use them.
+The following page discuss the various [Proxmox automation scripts](./Proxmox/docs/proxmox_scripts.md) that are available and how to use them.
 
 ## Setting up new VMs
 

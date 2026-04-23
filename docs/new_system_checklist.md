@@ -6,11 +6,11 @@ This list is just a guide to ensure that the most common issues are considered, 
 
 1. VM creation and pre-configurations prior to first start
    1. Create the VM within Proxmox
-      1. (Optional) Refer to [proxmox automation script documentation](../proxmox/docs/proxmox_scripts.md) on how to use the scripts for is.
-      2. (Optional) Use this script to [download a cloud-init compatible OS image](../scripts/proxmox/download_cloud_vm_image.sh).
-      3. (Optional) Use the [Proxmox template automation script](../scripts/proxmox/create_pve_template.sh).
-      4. (Optional) Use the [Proxmox VM creation script](../scripts/proxmox/create_vm.sh)
-      5. (Optional) Refer to this [example script](../scripts/proxmox/build_test_labrat_vm.sh) on how the chain the process of: OS Download -> Template creation -> VM Creation
+      1. (Optional) Refer to [proxmox automation script documentation](../Proxmox/docs/proxmox_scripts.md) on how to use the scripts for is.
+      2. (Optional) Use this script to [download a cloud-init compatible OS image](../scripts/Proxmox/download_cloud_vm_image.sh).
+      3. (Optional) Use the [Proxmox template automation script](../scripts/Proxmox/create_pve_template.sh).
+      4. (Optional) Use the [Proxmox VM creation script](../scripts/Proxmox/create_vm.sh)
+      5. (Optional) Refer to this [example script](../scripts/Proxmox/build_test_labrat_vm.sh) on how the chain the process of: OS Download -> Template creation -> VM Creation
 2. Adjust VM configurations.
    1. Machine config: Options that should be considered are: username, password, ssh keys, core count, memory, disk size, additional disks, VLANs, IP settings (DHCP/static)
    2. Network Config: Change or add network interfaces (i.e vmbr0, vmbr32, etc.), or add VLAN tag; change IP settings (DHCP/static).
