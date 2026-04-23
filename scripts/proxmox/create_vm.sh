@@ -25,10 +25,10 @@ FLG_VERBOSE=0
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 
 ## Load external function library if the file exists
-if [ -r "${SCRIPT_DIR}/prettier_logs.sh" ]; then 
-  . "${SCRIPT_DIR}/prettier_logs.sh"
+if [ -r "${SCRIPT_DIR}/better_logs.sh" ]; then 
+  . "${SCRIPT_DIR}/better_logs.sh"
 else
-  printf "Warning: prettier_logs.sh not found, using fallback logging.\n" >&2
+  printf "WARN: better_logs.sh not found, using fallback logging.\n" >&2
 fi
 
 ## Fallback function definitions the external script/function exist.

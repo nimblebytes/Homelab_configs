@@ -32,10 +32,10 @@ FLG_VERBOSE=0
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 
 ## Load external function library if the file exists
-if [ -r "${SCRIPT_DIR}/prettier_logs.sh" ]; then 
-  . "${SCRIPT_DIR}/prettier_logs.sh"
+if [ -r "${SCRIPT_DIR}/better_logs.sh" ]; then 
+  . "${SCRIPT_DIR}/better_logs.sh"
 else
-  printf "Warning: prettier_logs.sh not found, using fallback logging.\n" >&2
+  printf "Warning: better_logs.sh not found, using fallback logging.\n" >&2
 fi
 
 ## Fallback function definitions the external script/function exist.
@@ -86,7 +86,7 @@ download_image(){
   else
     msg_info "No local copy of image. Downloading..."
   fi
-  ## -q Supress verbose output
+  ## -q Suppress verbose output
   ## -S Show server header
   ## -N Mirror option. Download only if it is newer; output file does not need to be defined.
   # run_cmd wget -q --show-progress -N ${URL_OS_IMAGE} 2> /dev/null
@@ -299,8 +299,13 @@ if [ $FLAG_SKIP_DOWNLOAD -eq 0 ]; then
 fi
 
 if [ $FLAG_SKIP_CUSTOMIZE -eq 0 ]; then
-  customize_os_image
-  shrink_modified_image
+  if [ -f "$OS_IMAGE" ]; then 
+    customize_os_image
+    shrink_modified_image
+  else
+    msg_warn "Image file not found: ${OS_IMAGE}. Cannot modify or shrink the image."
+    [ $FLAG_SKIP_DOWNLOAD -eq 0 ] && msg_warn "Skip download flag is set. Run the script without the '-S' flag."
+  fi
 fi
 
 return 0
