@@ -31,13 +31,19 @@ else
   printf "WARN: better_logs.sh not found, using fallback logging.\n" >&2
 fi
 
-## Fallback function definitions the external script/function exist.
-## Each function needs to be tested separately in case this scripts assumes/uses one function that does not exists
-command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
-command -v msg_err >/dev/null 2>&1   || msg_err()   { printf 'ERROR: %s\n' "$@" >&2; exit 1;}
-command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
-command -v msg_start >/dev/null 2>&1 || msg_start() { printf 'START: %s\n' "$@" >&2; }
-command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf 'WARN: %s\n' "$@" >&2; }
+## =============================================================================
+## Fallback Logging
+## These simple stubs are active until better_logs.sh is sourced.
+## Once sourced, its definitions silently replace these.
+## =============================================================================
+command -v log_debug   >/dev/null 2>&1  || log_debug()   { printf '[DEBUG] %s\n' "$*"; }
+command -v log_info    >/dev/null 2>&1  || log_info()    { printf '[INFO]  %s\n' "$*"; }
+command -v log_step    >/dev/null 2>&1  || log_step()    { printf '[STEP]  %s\n' "$*"; }
+command -v log_ok      >/dev/null 2>&1  || log_ok()      { printf '[OK]    %s\n' "$*"; }
+command -v log_warn    >/dev/null 2>&1  || log_warn()    { printf '\033[33m[WARN]\033[0m  %s\n' "$*" >&2; }
+command -v log_error   >/dev/null 2>&1  || log_error()   { printf '\033[31m[ERROR]\033[0m %s\n' "$*" >&2; }
+command -v log_banner  >/dev/null 2>&1  || log_banner()  { printf '=== %s ===\n' "$*"; }
+command -v log_divider >/dev/null 2>&1  || log_divider() { printf '%s\n' '---------------------------------------------'; }
 
 ## ------------------------------------------------------------------------------------------------
 ## Function to hide the output of external commands, unless flag is turned on.
@@ -102,12 +108,12 @@ create_vm(){
 
   ## Check if the template ID is valid
   if ! (is_vmid_template $TL_ID); then 
-    msg_err "Error: VMID=$TL_ID is not a template configuration. Aborting."
+    log_err "Error: VMID=$TL_ID is not a template configuration. Aborting."
   fi
   
   ## Check if the vm ID already exists
   if (is_vmid_vm $VM_ID) && [ "$FLAG_FORCE" -eq 0 ]; then 
-    printf "Warning: VM with VMID=%s already exists. Continuing will remove this VM.\nProceed (y/n):" "${BLUE}${VM_ID}${RESET}"
+    printf "Warning: VM with VMID=%s already exists. Continuing will remove this VM.\nProceed (y/n):" "${C_BLUE}${VM_ID}${C_RESET}"
     while true; do
         printf "Do you want to continue? (yes/no): "
         read IO_ANSWER
@@ -115,7 +121,7 @@ create_vm(){
         IO_ANSWER=$(printf '%s' "$IO_ANSWER" | tr '[:upper:]' '[:lower:]')
         case "$IO_ANSWER" in
           yes|y)
-            msg_info "Removing existing VM: VMID=${BLUE}${VM_ID}${RESET}"
+            log_info "Removing existing VM: VMID=${C_BLUE}${VM_ID}${C_RESET}"
             run_cmd purge_vm $VM_ID
             break
             ;;
@@ -129,10 +135,10 @@ create_vm(){
       done
     exit 1
   elif (is_vmid_vm $VM_ID); then 
-    msg_info "Removing existing VM: VMID=${BLUE}${VM_ID}${RESET}"
+    log_info "Removing existing VM: VMID=${C_BLUE}${VM_ID}${C_RESET}"
     run_cmd purge_vm $VM_ID
   fi
-  msg_info "Cloning template: ${BLUE}${TL_ID}${RESET} => ${BLUE}${VM_ID}${RESET}"
+  log_info "Cloning template: ${C_BLUE}${TL_ID}${C_RESET} => ${C_BLUE}${VM_ID}${C_RESET}"
   run_cmd qm clone $TL_ID $VM_ID --name "$VM_NAME" $OPTS_FULL
 }
 ## ------------------------------------------------------------------------------------------------
@@ -142,30 +148,30 @@ purge_vm() {
     VM_ID=$1
 
     if (is_vmid_template $VM_ID); then 
-      msg_error "VMID=$VM_ID is an ID for a template. This function is expecting a VM ID to be removed. Aborting to prevent affecting any linked clones."
+      log_error "VMID=$VM_ID is an ID for a template. This function is expecting a VM ID to be removed. Aborting to prevent affecting any linked clones."
     fi
 
     ## Check if VM exists
     if ! [ -f /etc/pve/nodes/*/qemu-server/"$VM_ID".conf ]; then
-      msg_info "VM $VM_ID not found. Skipping.\n"
+      log_info "VM $VM_ID not found. Skipping.\n"
       return 0
     fi
 
-    msg_info "Stopping VM $VM_ID...\n"
+    log_info "Stopping VM $VM_ID...\n"
     ## --shutdown attempts a graceful stop; use 'qm stop' for immediate kill
     qm stop "$VM_ID" --skiplock 1 >/dev/null 2>&1
 
-    msg_info "Removing VM $VM_ID...\n"
+    log_info "Removing VM $VM_ID...\n"
     ## --purge removes the VM from backup jobs and replication too
     qm destroy "$VM_ID" --purge 1
 
     ## Wait until the configuration file is gone
-    msg_info "Waiting for cleanup to complete...\n"
+    log_info "Waiting for cleanup to complete...\n"
     while [ -f /etc/pve/nodes/*/qemu-server/"$VM_ID".conf ]; do
         sleep 1
     done
 
-    msg_info "VM $VM_ID has been successfully purged.\n"
+    log_info "VM $VM_ID has been successfully purged.\n"
     return 0
 }
 
@@ -248,6 +254,6 @@ done
 ## ------------------------------------------------------------------------------------------------
 ## Main 
 ## ------------------------------------------------------------------------------------------------
-msg_start "Create VM: VMID=$DEF_VM_ID Name=$DEF_VM_NAME"
+log_step "Create VM: VMID=$DEF_VM_ID Name=$DEF_VM_NAME"
 create_vm $DEF_TEMPLATE_ID $DEF_VM_ID $DEF_VM_NAME
-msg_done "Create VM"
+log_ok "Create VM"

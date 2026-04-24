@@ -38,13 +38,19 @@ else
   printf "Warning: better_logs.sh not found, using fallback logging.\n" >&2
 fi
 
-## Fallback function definitions the external script/function exist.
-## Each function needs to be tested separately in case this scripts assumes/uses one function that does not exists
-command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
-command -v msg_err >/dev/null 2>&1   || msg_err()   { printf 'ERROR: %s\n' "$@" >&2; }
-command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
-command -v msg_start >/dev/null 2>&1 || msg_start() { printf 'START: %s\n' "$@" >&2; }
-command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf 'WARN: %s\n' "$@" >&2; }
+## =============================================================================
+## Fallback Logging
+## These simple stubs are active until better_logs.sh is sourced.
+## Once sourced, its definitions silently replace these.
+## =============================================================================
+command -v log_debug   >/dev/null 2>&1  || log_debug()   { printf '[DEBUG] %s\n' "$*"; }
+command -v log_info    >/dev/null 2>&1  || log_info()    { printf '[INFO]  %s\n' "$*"; }
+command -v log_step    >/dev/null 2>&1  || log_step()    { printf '[STEP]  %s\n' "$*"; }
+command -v log_ok      >/dev/null 2>&1  || log_ok()      { printf '[OK]    %s\n' "$*"; }
+command -v log_warn    >/dev/null 2>&1  || log_warn()    { printf '\033[33m[WARN]\033[0m  %s\n' "$*" >&2; }
+command -v log_error   >/dev/null 2>&1  || log_error()   { printf '\033[31m[ERROR]\033[0m %s\n' "$*" >&2; }
+command -v log_banner  >/dev/null 2>&1  || log_banner()  { printf '=== %s ===\n' "$*"; }
+command -v log_divider >/dev/null 2>&1  || log_divider() { printf '%s\n' '---------------------------------------------'; }
 
 ## ------------------------------------------------------------------------------------------------
 ## Function to hide the output of external commands, unless flag is turned on.
@@ -63,36 +69,36 @@ run_cmd() {
 ##  - libguestfs-tools is used to modify the OS images without bootup them up first
 ## ------------------------------------------------------------------------------------------------
 install_required_tools(){
-  msg_start "Install required tools"
+  log_step "Install required tools"
   if dpkg -s libguestfs-tools > /dev/null 2>&1; then
-    msg_info "Already installed: ${PURPLE}libguestfs-tools${RESET}"
+    log_info "Already installed: ${C_MAGENTA}libguestfs-tools${C_RESET}"
   else
-    msg_info "Installing: ${PURPLE}libguestfs-tools${RESET}"
+    log_info "Installing: ${C_MAGENTA}libguestfs-tools${C_RESET}"
     run_cmd apt-get update -y
     run_cmd apt-get install libguestfs-tools -y
-    [ "$?" -ne 0 ] && msg_warn "Failed to install libguestfs-tools. Check internet connection."
+    [ "$?" -ne 0 ] && log_warn "Failed to install libguestfs-tools. Check internet connection."
   fi
-  msg_done "Install required tools"
+  log_ok "Install required tools"
 }
 
 ## ------------------------------------------------------------------------------------------------
 ## Function to download the required OS Image
 ## ------------------------------------------------------------------------------------------------
 download_image(){
-  msg_start "Download OS image: ${PURPLE}${OS_IMAGE}${RESET}"
+  log_step "Download OS image: ${C_MAGENTA}${OS_IMAGE}${C_RESET}"
   cd ${ISO_DIR_PATH}
   if [ -e ${OS_IMAGE} ]; then 
-    msg_info "Local copy of image exists. Checking for newer version."
+    log_info "Local copy of image exists. Checking for newer version."
   else
-    msg_info "No local copy of image. Downloading..."
+    log_info "No local copy of image. Downloading..."
   fi
   ## -q Suppress verbose output
   ## -S Show server header
   ## -N Mirror option. Download only if it is newer; output file does not need to be defined.
   # run_cmd wget -q --show-progress -N ${URL_OS_IMAGE} 2> /dev/null
   run_cmd wget -q --show-progress -N ${URL_OS_IMAGE} 
-  [ "$?" -ne 0 ] && msg_err "Failed to download image. Aborting."
-  msg_done "Download OS Image"
+  [ "$?" -ne 0 ] && log_err "Failed to download image. Aborting."
+  log_ok "Download OS Image"
 }
 
 ## ------------------------------------------------------------------------------------------------
@@ -103,15 +109,15 @@ download_image(){
 ## - Clean up apt cache
 ## ------------------------------------------------------------------------------------------------
 customize_os_image(){
-  msg_start "Customize Image: ${PURPLE}${OS_IMAGE_MODIFIED}${RESET}"
+  log_step "Customize Image: ${C_MAGENTA}${OS_IMAGE_MODIFIED}${C_RESET}"
   cd ${ISO_DIR_PATH}
 
-  msg_info "Create copy: ${LIGHT_BLUE}${OS_IMAGE}${RESET} --> ${LIGHT_BLUE}${OS_IMAGE_MODIFIED}${RESET}"
+  log_info "Create copy: ${C_LBLUE}${OS_IMAGE}${C_RESET} --> ${C_LBLUE}${OS_IMAGE_MODIFIED}${C_RESET}"
   cp ${OS_IMAGE} ${OS_IMAGE_MODIFIED}
 
   #virt-customize -a ${ISO_DIR_PATH}/${OS_IMAGE} --root-password password:NewPassword!
 
-  msg_info "Customize: Request domain from DHCP; Install Guest-Agent; Cleanup "
+  log_info "Customize: Request domain from DHCP; Install Guest-Agent; Cleanup "
   ## Modify the base OS
   ## Do NOT add "cloud-init clean --machine-id". This breaks the DHCP client configuration, with a
   ## file not found error, because systemd-networkd uses the machine-id for:
@@ -136,8 +142,8 @@ UseDomains=yes
     --run-command "cloud-init clean --logs --seed --machine-id" \
     --run-command "apt clean" 
 
-  [ "$?" -ne 0 ] && msg_err "Error while customizing the image. Aborting."
-  msg_done "Customize Image"
+  [ "$?" -ne 0 ] && log_err "Error while customizing the image. Aborting."
+  log_ok "Customize Image"
 
 }
 
@@ -145,10 +151,10 @@ UseDomains=yes
 ## Function to shrink the image, by remove unused/unallocated space and drives
 ## ------------------------------------------------------------------------------------------------
 shrink_modified_image(){
-  msg_start "Shrink image: ${PURPLE}${OS_IMAGE_MODIFIED}${RESET}"
+  log_step "Shrink image: ${C_MAGENTA}${OS_IMAGE_MODIFIED}${C_RESET}"
   run_cmd virt-sparsify --in-place ${OS_IMAGE_MODIFIED}
-  [ "$?" -ne 0 ] && msg_warn "Error shrinking the image. Continuing."
-  msg_done "Shrink image"
+  [ "$?" -ne 0 ] && log_warn "Error shrinking the image. Continuing."
+  log_ok "Shrink image"
 }
 
 ## ------------------------------------------------------------------------------------------------
@@ -303,8 +309,8 @@ if [ $FLAG_SKIP_CUSTOMIZE -eq 0 ]; then
     customize_os_image
     shrink_modified_image
   else
-    msg_warn "Image file not found: ${OS_IMAGE}. Cannot modify or shrink the image."
-    [ $FLAG_SKIP_DOWNLOAD -eq 0 ] && msg_warn "Skip download flag is set. Run the script without the '-S' flag."
+    log_warn "Image file not found: ${OS_IMAGE}. Cannot modify or shrink the image."
+    [ $FLAG_SKIP_DOWNLOAD -eq 0 ] && log_warn "Skip download flag is set. Run the script without the '-S' flag."
   fi
 fi
 
