@@ -9,7 +9,9 @@
 ## =============================================================================
 
 SOURCE_REPO=https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/proxmox/
-TARGET_FOLDER=/usr/local/lib/scripts_cloud_init
+TARGET_FOLDER="${HOME}/bin/proxmox_scripts"
+START_MARK="## >>> Proxmox automation scripts >>>"
+END_MARK="## <<< Proxmox automation scripts <<<"
 
 PROXMOX_SCRIPTS="download_cloud_vm_image.sh create_pve_template.sh create_vm.sh build_test_labrat_vm.sh build_debian13_template.sh"
 
@@ -28,5 +30,17 @@ done
 ## Just download this helper library (from a different repo folder), but do not make it executable
 wget -q -N --show-progress "https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/lib/better_logs.sh"
 
+## Add the script folder to the paths variable
+if ! grep -Fq "$START_MARK" "$HOME/.bashrc"; then
+  {
+      printf "%s\n" "$START_MARK"
+      printf 'export PATH="%s:%s\n"' "$TARGET_FOLDER" "$PATH"
+      printf "%s\n" "$END_MARK"
+  } >> "$HOME/.bashrc"
+fi
+
 printf "Scripts downloaded into folder: %s\n" "$TARGET_FOLDER"
+printf "Environment variables updated. Reload with 'source \$HOME/.bashrc'\n"
+
+
 
