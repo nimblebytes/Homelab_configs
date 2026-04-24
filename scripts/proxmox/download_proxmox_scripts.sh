@@ -33,8 +33,8 @@ wget -q -N --show-progress "https://raw.githubusercontent.com/nimblebytes/Homela
 ## Add the script folder to the paths variable
 if ! grep -Fq "$START_MARK" "$HOME/.bashrc"; then
   {
-      printf "%s\n" "$START_MARK"
-      printf 'export PATH="%s:%s\n"' "$TARGET_FOLDER" "$PATH"
+      printf "\n%s\n" "$START_MARK"
+      printf 'export PATH="%s:%s"\n' "$TARGET_FOLDER" "$PATH"
       printf "%s\n" "$END_MARK"
   } >> "$HOME/.bashrc"
 fi
