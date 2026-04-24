@@ -18,6 +18,7 @@ DEF_SEARCH_DOMAIN="example.internal"
 DEF_NETWORK_BRIDGE0=vmbr32
 DEF_TEMPLATE_NUM=9000
 DEF_OS_IMAGE="debian-13-genericcloud-amd64.qcow2"
+DEF_AUTHORISED_SSH_KEYS="/root/.ssh/cloud_init_authorized_keys"
 
 
 ## Variables used in the script
@@ -36,7 +37,8 @@ FLAG_PARSED=0
 FLG_VERBOSE=0
 
 ## Resolve directory of this script (POSIX safe)
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+SCRIPT_NAME=${0##*/}
 
 ## Load external function library if the file exists
 if [ -r "${SCRIPT_DIR}/better_logs.sh" ]; then 
@@ -48,10 +50,10 @@ fi
 ## Fallback function definitions the external script/function exist.
 ## Each function needs to be tested seperately in case this scripts assumes/uses one function that does not exists
 command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
-command -v msg_err >/dev/null 2>&1   || msg_err()   { printf 'ERROR: %s\n' "$@" >&2; }
+command -v msg_err >/dev/null 2>&1   || msg_err()   { printf '\033[31mERROR\033[0m: %s\n' "$@" >&2; }
 command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
 command -v msg_start >/dev/null 2>&1 || msg_start() { printf 'START: %s\n' "$@" >&2; }
-command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf 'WARN: %s\n' "$@" >&2; }
+command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf '\033[33mWARN\033[0m: %s\n' "$@" >&2; }
 
 ## ------------------------------------------------------------------------------------------------
 ## Function to hide the output of external commands, unless flag is turned on.
@@ -68,11 +70,20 @@ run_cmd() {
 ## ------------------------------------------------------------------------------------------------
 ## Creates a PVE template using the input parameters or defined defaults
 ## Following assumptions are made, that could cause script errors if not true:
-## - Proxmox uses or contains a ZFS partition (local-zfs)
+## - Proxmox uses or contains a single ZFS (local-zfs) or LVM (local-lvm) Partition
 ## - SSH keys to add to the template are stored in the file /root/.ssh/cloud_init_authorized_keys
 ## ------------------------------------------------------------------------------------------------
 create_template(){
   msg_start "Create PVE Template: VMID=${LIGHT_YELLOW}${TEMPLATE_NUM}${RESET}, OS=${LIGHT_BLUE}${PATH_OS}${RESET}"
+
+  ## Determine if proxmox is configured with local-lvm or local-zfs
+  ## if both are present or there are multiple type this will break
+  PROXMOX_VOL_TYPE=$(pvesm status | awk '/local-(lvm|zfs)/ {print $1}')
+  if [ "$(printf '%s\n' "$PROXMOX_VOL_TYPE" | wc -l)" -gt 1 ]; then
+    msg_error "Multiple backend storages are present. The '$SCRIPT_NAME' script does not handle such scenarios. Aborting"
+    return 1 
+  fi
+
   PATH_TEMPLATE="${PATH_DIR_VM_CONFIG}/${TEMPLATE_NUM}.conf"
   if [ -e $PATH_TEMPLATE ]; then
     if [ $FLAG_OVERWRITE -eq 0 ]; then
@@ -109,31 +120,44 @@ create_template(){
   run_cmd qm create $TEMPLATE_NUM --name "${TEMPLATE_NAME}"
   [ "$?" -ne 0 ] && msg_err "Failed to create VM for the template. Aborting."
 
-  #qm importdisk $TEMPLATE_NUM ${PATH_DIR_ISO}/${OS_IMAGE} local-zfs
+  #qm importdisk $TEMPLATE_NUM ${PATH_DIR_ISO}/${OS_IMAGE} $PROXMOX_VOL_TYPE
+
+  if [ -f "$DEF_AUTHORISED_SSH_KEYS" ]; then 
+    ADD_SSH_KEYS="true"
+  else
+    msg_warn "No ssh keys added to image. File not file: ${DEF_AUTHORISED_SSH_KEYS}."
+    msg_warn "Proceeding without any ssh keys."
+  fi
 
   msg_info "Customize VM (it takes a while to transfer the OS image into the VM)"
-  run_cmd qm set $TEMPLATE_NUM --ostype l26 --scsi0 local-zfs:0,discard=on,ssd=1,import-from=${PATH_OS} \
+  run_cmd qm set $TEMPLATE_NUM --ostype l26 --scsi0 ${PROXMOX_VOL_TYPE}:0,discard=on,ssd=1,import-from=${PATH_OS} \
     --serial0 socket --vga serial0 --machine q35 --scsihw virtio-scsi-pci --agent enabled=1 \
-    --bios ovmf --efidisk0 local-zfs:1,efitype=4m,pre-enrolled-keys=1 \
+    --bios ovmf --efidisk0 ${PROXMOX_VOL_TYPE}:1,efitype=4m,pre-enrolled-keys=1 \
     --boot order=scsi0 \
-    --scsi2 local-zfs:cloudinit,media=cdrom \
+    --scsi2 ${PROXMOX_VOL_TYPE}:cloudinit,media=cdrom \
     --cpu host --cores 1 --memory 2048 \
     -net0 virtio,bridge=${DEF_NETWORK_BRIDGE0} \
-    --ciuser $DEF_USER_NAME --cipassword $DEF_PASSWORD --sshkeys /root/.ssh/cloud_init_authorized_keys \
+    --ciuser "$DEF_USER_NAME" --cipassword "$DEF_PASSWORD" ${ADD_SSH_KEYS:+--sshkeys "$DEF_AUTHORISED_SSH_KEYS"}\
     --nameserver "${DEF_NAME_SERVER}" \
     --searchdomain "${DEF_SEARCH_DOMAIN}" \
     --ipconfig0 ip=dhcp
 
   if [ "$?" -ne 0 ]; then 
-    msg_err "Error occurred configuring the VM. Removing the tempory VM and aborting."
+    msg_err "Error occurred configuring the VM. Removing the temporary VM and aborting."
     run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
+    return 1
   fi
   
   msg_info "Convert VM into template"
   qm template $TEMPLATE_NUM
   if [ "$?" -ne 0 ]; then
-    msg_err "Failed to convert the VM into a Template. Removing the tempory VM and aborting."
+    msg_err "Failed to convert the VM into a Template. Removing the temporary VM and aborting."
     run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
+    return 1
+  fi
+  if [ "$PROXMOX_VOL_TYPE" = "local-lvm" ]; then 
+    log_warn "Warnings about 'Combining activation change...' are a result of the template being created on a LVM partition."
+    log_warn "This particular warning comes from LVM, a non-PVE specific technology, and can be ignored."  
   fi
 
   msg_done "Create PVE Template"
