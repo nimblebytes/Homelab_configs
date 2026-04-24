@@ -24,7 +24,7 @@ DEF_OS_IMAGE=""
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && $PWD)
 
 ## Download the latest OS Image and patch it
-${SCRIPT_DIR}/download_cloud_vm_image.sh -S -${DEF_DOWNLOAD_OS_TYPE}
+${SCRIPT_DIR}/download_cloud_vm_image.sh -${DEF_DOWNLOAD_OS_TYPE}
 if [ $? -ne 0 ]; then
   printf "Error occurred running script to download and customize OS image. Aborting.\n"
   printf "To debug the issue, run the command for verbose output: %s/download_cloud_vm_image.sh -v -S -d13" "$SCRIPT_DIR"
