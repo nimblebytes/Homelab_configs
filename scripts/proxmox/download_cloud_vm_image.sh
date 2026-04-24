@@ -22,6 +22,8 @@ URL_OS_IMAGE=""
 
 ISO_DIR_PATH=/var/lib/vz/template/iso           ## The location depends on the configuration of Proxmox 
 
+LOG_LEVEL=INFO    ## Options: DEBUG; INFO; STEP; OK; WARN; ERROR
+
 ## Variables used in the script
 FLAG_OUTPUT_FILEPATH=0
 FLAG_SKIP_CUSTOMIZE=0

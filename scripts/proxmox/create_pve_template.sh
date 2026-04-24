@@ -20,6 +20,8 @@ DEF_TEMPLATE_NUM=9000
 DEF_OS_IMAGE="debian-13-genericcloud-amd64.qcow2"
 DEF_AUTHORISED_SSH_KEYS="/root/.ssh/cloud_init_authorized_keys"
 
+LOG_LEVEL=INFO    ## Options: DEBUG; INFO; STEP; OK; WARN; ERROR
+
 
 ## Variables used in the script
 PATH_DIR_ISO=/var/lib/vz/template/iso           ## The location depends on the configuration of Proxmox 

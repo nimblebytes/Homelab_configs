@@ -15,6 +15,8 @@ DEF_VM_NAME=gingko
 DEF_VM_ID=999
 DEF_TEMPLATE_ID=0
 
+LOG_LEVEL=INFO    ## Options: DEBUG; INFO; STEP; OK; WARN; ERROR
+
 
 ## Variables used in the script
 FLAG_FORCE=0
