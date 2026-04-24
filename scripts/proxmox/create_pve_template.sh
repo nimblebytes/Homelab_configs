@@ -47,13 +47,19 @@ else
   printf "Warning: better_logs.sh not found, using fallback logging.\n" >&2
 fi
 
-## Fallback function definitions the external script/function exist.
-## Each function needs to be tested seperately in case this scripts assumes/uses one function that does not exists
-command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
-command -v msg_err >/dev/null 2>&1   || msg_err()   { printf '\033[31mERROR\033[0m: %s\n' "$@" >&2; }
-command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
-command -v msg_start >/dev/null 2>&1 || msg_start() { printf 'START: %s\n' "$@" >&2; }
-command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf '\033[33mWARN\033[0m: %s\n' "$@" >&2; }
+## =============================================================================
+## Fallback Logging
+## These simple stubs are active until better_logs.sh is sourced.
+## Once sourced, its definitions silently replace these.
+## =============================================================================
+command -v log_debug   >/dev/null 2>&1  || log_debug()   { printf '[DEBUG] %s\n' "$*"; }
+command -v log_info    >/dev/null 2>&1  || log_info()    { printf '[INFO]  %s\n' "$*"; }
+command -v log_step    >/dev/null 2>&1  || log_step()    { printf '[STEP]  %s\n' "$*"; }
+command -v log_ok      >/dev/null 2>&1  || log_ok()      { printf '[OK]    %s\n' "$*"; }
+command -v log_warn    >/dev/null 2>&1  || log_warn()    { printf '\033[33m[WARN]\033[0m  %s\n' "$*" >&2; }
+command -v log_error   >/dev/null 2>&1  || log_error()   { printf '\033[31m[ERROR]\033[0m %s\n' "$*" >&2; }
+command -v log_banner  >/dev/null 2>&1  || log_banner()  { printf '=== %s ===\n' "$*"; }
+command -v log_divider >/dev/null 2>&1  || log_divider() { printf '%s\n' '---------------------------------------------'; }
 
 ## ------------------------------------------------------------------------------------------------
 ## Function to hide the output of external commands, unless flag is turned on.
@@ -74,13 +80,13 @@ run_cmd() {
 ## - SSH keys to add to the template are stored in the file /root/.ssh/cloud_init_authorized_keys
 ## ------------------------------------------------------------------------------------------------
 create_template(){
-  msg_start "Create PVE Template: VMID=${LIGHT_YELLOW}${TEMPLATE_NUM}${RESET}, OS=${LIGHT_BLUE}${PATH_OS}${RESET}"
+  log_step "Create PVE Template: VMID=${C_LYELLOW}${TEMPLATE_NUM}${C_RESET}, OS=${C_LBLUE}${PATH_OS}${C_RESET}"
 
   ## Determine if proxmox is configured with local-lvm or local-zfs
   ## if both are present or there are multiple type this will break
   PROXMOX_VOL_TYPE=$(pvesm status | awk '/local-(lvm|zfs)/ {print $1}')
   if [ "$(printf '%s\n' "$PROXMOX_VOL_TYPE" | wc -l)" -gt 1 ]; then
-    msg_error "Multiple backend storages are present. The '$SCRIPT_NAME' script does not handle such scenarios. Aborting"
+    log_error "Multiple backend storages are present. The '$SCRIPT_NAME' script does not handle such scenarios. Aborting"
     return 1 
   fi
 
@@ -96,9 +102,9 @@ create_template(){
         IO_ANSWER=$(printf '%s' "$IO_ANSWER" | tr '[:upper:]' '[:lower:]')
         case "$IO_ANSWER" in
           yes|y)
-            msg_info "Removing old template"
+            log_info "Removing old template"
             run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
-            [ "$?" -ne 0 ] && msg_err "Failed to remove old template Aborting."
+            [ "$?" -ne 0 ] && log_err "Failed to remove old template Aborting."
             break
             ;;
           no|n)
@@ -110,26 +116,26 @@ create_template(){
         esac
       done
     else
-      msg_info "Removing old template"
+      log_info "Removing old template"
       run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
-      [ "$?" -ne 0 ] && msg_err "Failed to remove old template. Aborting."
+      [ "$?" -ne 0 ] && log_err "Failed to remove old template. Aborting."
     fi
   fi
 
-  msg_info "Create VM"
+  log_info "Create VM"
   run_cmd qm create $TEMPLATE_NUM --name "${TEMPLATE_NAME}"
-  [ "$?" -ne 0 ] && msg_err "Failed to create VM for the template. Aborting."
+  [ "$?" -ne 0 ] && log_err "Failed to create VM for the template. Aborting."
 
   #qm importdisk $TEMPLATE_NUM ${PATH_DIR_ISO}/${OS_IMAGE} $PROXMOX_VOL_TYPE
 
   if [ -f "$DEF_AUTHORISED_SSH_KEYS" ]; then 
     ADD_SSH_KEYS="true"
   else
-    msg_warn "No ssh keys added to image. File not file: ${DEF_AUTHORISED_SSH_KEYS}."
-    msg_warn "Proceeding without any ssh keys."
+    log_warn "No ssh keys added to image. File not file: ${DEF_AUTHORISED_SSH_KEYS}."
+    log_warn "Proceeding without any ssh keys."
   fi
 
-  msg_info "Customize VM (it takes a while to transfer the OS image into the VM)"
+  log_info "Customize VM (it takes a while to transfer the OS image into the VM)"
   run_cmd qm set $TEMPLATE_NUM --ostype l26 --scsi0 ${PROXMOX_VOL_TYPE}:0,discard=on,ssd=1,import-from=${PATH_OS} \
     --serial0 socket --vga serial0 --machine q35 --scsihw virtio-scsi-pci --agent enabled=1 \
     --bios ovmf --efidisk0 ${PROXMOX_VOL_TYPE}:1,efitype=4m,pre-enrolled-keys=1 \
@@ -143,15 +149,15 @@ create_template(){
     --ipconfig0 ip=dhcp
 
   if [ "$?" -ne 0 ]; then 
-    msg_err "Error occurred configuring the VM. Removing the temporary VM and aborting."
+    log_err "Error occurred configuring the VM. Removing the temporary VM and aborting."
     run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
     return 1
   fi
   
-  msg_info "Convert VM into template"
+  log_info "Convert VM into template"
   qm template $TEMPLATE_NUM
   if [ "$?" -ne 0 ]; then
-    msg_err "Failed to convert the VM into a Template. Removing the temporary VM and aborting."
+    log_err "Failed to convert the VM into a Template. Removing the temporary VM and aborting."
     run_cmd qm destroy "$TEMPLATE_NUM" --purge 1
     return 1
   fi
@@ -160,7 +166,7 @@ create_template(){
     log_warn "This particular warning comes from LVM, a non-PVE specific technology, and can be ignored."  
   fi
 
-  msg_done "Create PVE Template"
+  log_done "Create PVE Template"
 }
 
 ## ------------------------------------------------------------------------------------------------
