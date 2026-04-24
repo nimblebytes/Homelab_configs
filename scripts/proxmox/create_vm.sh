@@ -32,7 +32,7 @@ else
 fi
 
 ## Fallback function definitions the external script/function exist.
-## Each function needs to be tested seperately in case this scripts assumes/uses one function that does not exists
+## Each function needs to be tested separately in case this scripts assumes/uses one function that does not exists
 command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
 command -v msg_err >/dev/null 2>&1   || msg_err()   { printf 'ERROR: %s\n' "$@" >&2; exit 1;}
 command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
@@ -44,14 +44,14 @@ command -v msg_warn >/dev/null 2>&1  || msg_warn()  { printf 'WARN: %s\n' "$@" >
 ## ------------------------------------------------------------------------------------------------
 run_cmd() {
   if [ "$FLG_VERBOSE" -eq 1 ]; then
-    printf "%s[ VEBOSE ]%s Running command: %s\n" "$YELLOW" "$RESET" "$@"
+    printf "%s[ VERBOSE ]%s Running command: %s\n" "$YELLOW" "$RESET" "$@"
     "$@"                    # Execute the command. Use $@ and not $* to preserve quote word boundaries 
   else
     "$@" > /dev/null        # Execute the command
   fi
 }
 
-## Gext next available VMID 
+## Get next available VMID 
 get_next_id(){
   DEF_VM_ID=$(pvesh get /cluster/nextid)
 }
@@ -88,7 +88,7 @@ is_vmid_vm(){
 ## ------------------------------------------------------------------------------------------------
 ## Create the VM with the input parameters. Following checks are preformed:
 ## - If the provided template ID exists, and is actually a template
-## - If the VM already exists, calls fuction that safely handles removing the VM
+## - If the VM already exists, calls function that safely handles removing the VM
 ## ------------------------------------------------------------------------------------------------
 create_vm(){
   TL_ID=$1
@@ -136,7 +136,7 @@ create_vm(){
   run_cmd qm clone $TL_ID $VM_ID --name "$VM_NAME" $OPTS_FULL
 }
 ## ------------------------------------------------------------------------------------------------
-# Function to saftely stop and remove he VM
+# Function to safely stop and remove he VM
 ## ------------------------------------------------------------------------------------------------
 purge_vm() {
     VM_ID=$1
@@ -173,7 +173,7 @@ purge_vm() {
 ## Usage function
 ## ------------------------------------------------------------------------------------------------
 usage(){
-  printf "Script to create VM tempaltes with minimal requirements and specific default values.\n"
+  printf "Script to create VM templates with minimal requirements and specific default values.\n"
   printf "Usage:\n"
   printf "  %s [-f] [-F|-L] -i <NUM> -n <STRING> -t <NUM> \n" "${0##*/}"
   printf "  %s -h | --help \n" "${0##*/}"

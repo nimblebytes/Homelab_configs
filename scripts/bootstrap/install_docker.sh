@@ -299,7 +299,7 @@ EOF
   "$SUDO" apt update -y -qq >/dev/null 2>&1
   for pkg in uidmap dbus-user-session slirp4netns docker-ce-rootless-extras; do 
     "$SUDO" apt-get install -y -qq $pkg >/dev/null 2>&1 || \
-      { log_error "Unable to install docker dependancy package $pkg"; return 1; }
+      { log_error "Unable to install docker dependency package $pkg"; return 1; }
   done
 
   ## Disable system-wide docker daemon
@@ -527,8 +527,8 @@ modify_bashrc_file() {
   OPTIONS="$1"
   FILE="$HOME/.bashrc"
 
-  START_MARK="# >>> DOCKER DETECT BLOCK >>>"
-  END_MARK="# <<< DOCKER DETECT BLOCK <<<"
+  START_MARK="## >>> DOCKER DETECT BLOCK >>>"
+  END_MARK="## <<< DOCKER DETECT BLOCK <<<"
 
   # Ensure file exists
   [ -f "$FILE" ] || touch "$FILE"
@@ -566,7 +566,7 @@ modify_bashrc_file() {
       ;;
   esac
 
-  ## Load the new environment varaibles into this script
+  ## Load the new environment variables into this script
   . "$HOME/.bashrc"
 }
 

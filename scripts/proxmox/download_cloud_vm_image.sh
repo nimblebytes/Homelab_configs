@@ -39,7 +39,7 @@ else
 fi
 
 ## Fallback function definitions the external script/function exist.
-## Each function needs to be tested seperately in case this scripts assumes/uses one function that does not exists
+## Each function needs to be tested separately in case this scripts assumes/uses one function that does not exists
 command -v msg_done >/dev/null 2>&1  || msg_done()  { printf 'DONE: %s\n' "$@" >&2; }
 command -v msg_err >/dev/null 2>&1   || msg_err()   { printf 'ERROR: %s\n' "$@" >&2; }
 command -v msg_info >/dev/null 2>&1  || msg_info()  { printf 'INFO: %s\n' "$@" >&2; }
