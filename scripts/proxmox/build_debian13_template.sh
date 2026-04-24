@@ -38,6 +38,6 @@ DEF_OS_IMAGE=$(${SCRIPT_DIR}/download_cloud_vm_image.sh -m -${DEF_DOWNLOAD_OS_TY
 ${SCRIPT_DIR}/create_pve_template.sh -f -i ${DEF_PATH_DIR_ISO}/${DEF_OS_IMAGE} -n $DEF_TEMPLATE_ID -N ${DEF_TEMPLATE_NAME}
 if [ $? -ne 0 ]; then
   printf "Error running script to create template. Aborting.\n"
-  printf "To debug the issue, run the command for verbose output: %s/create_pve_template.sh -v -i %s/%s -n %s -N %s" "$SCRIPT_DIR" "$DEF_PATH_DIR_ISO" "$DEF_OS_IMAGE" "$DEF_TEMPLATE_ID" "$DEF_TEMPLATE_NAME"
+  printf "To debug the issue, run the command for verbose output: %s/create_pve_template.sh -v -i %s/%s -n %s -N %s\n" "$SCRIPT_DIR" "$DEF_PATH_DIR_ISO" "$DEF_OS_IMAGE" "$DEF_TEMPLATE_ID" "$DEF_TEMPLATE_NAME"
   exit 1
 fi
