@@ -29,7 +29,7 @@ FLAG_SKIP_DOWNLOAD=0
 FLG_VERBOSE=0
 
 ## Resolve directory of this script (POSIX safe)
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
 ## Load external function library if the file exists
 if [ -r "${SCRIPT_DIR}/better_logs.sh" ]; then 

@@ -21,13 +21,13 @@ DEF_PATH_DIR_ISO=/var/lib/vz/template/iso           ## The location depends on t
 
 ## ## Variables used in the script
 DEF_OS_IMAGE=""
-SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && $PWD)
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
 ## Download the latest OS Image and patch it
 ${SCRIPT_DIR}/download_cloud_vm_image.sh -${DEF_DOWNLOAD_OS_TYPE}
 if [ $? -ne 0 ]; then
   printf "Error occurred running script to download and customize OS image. Aborting.\n"
-  printf "To debug the issue, run the command for verbose output: %s/download_cloud_vm_image.sh -v -S -d13" "$SCRIPT_DIR"
+  printf "To debug the issue, run the command for verbose output: %s/download_cloud_vm_image.sh -v -d13\n" "$SCRIPT_DIR"
   exit 1
 fi
 
