@@ -617,18 +617,22 @@ create_credentials() {
     CRED_FILE="$CONST_CRED_DIR/${PROFILE}.cred"
     if [ ! -f "$CRED_FILE" ]; then
       if [ -t 0 ]; then
+        # interactive stdin
+        read -r -p "Username for $PROFILE: " PROFILE_USER
+        read -r -p "Password for $PROFILE: " PROFILE_PWD
+      elif [ -r /dev/tty ]; then
+        ## fallback to terminal, script was piped
+        printf "Username for %s: " "$PROFILE" > /dev/tty
+        read -r PROFILE_USER < /dev/tty
+        printf "Password for %s: " "$PROFILE" > /dev/tty
+        read -r PROFILE_PWD < /dev/tty
+      else
+        ## fully non-interactive
         log_info "Non-interactive mode: Reading in username and password for profile: $PROFILE"
         read -r PROFILE_USER
         read -r PROFILE_PWD
-      else
-        printf "Username for %s: " "$PROFILE"
-        read -r PROFILE_USER < /dev/tty
-        printf "Password for %s: " "$PROFILE"
-        ## Not suppressing output to the terminal to make it easier to enter complex passwords.
-        # stty -echo
-        read -r PROFILE_PWD < /dev/tty
-        # stty echo
       fi
+
       printf "username=%s\npassword=%s" "$PROFILE_USER" "$PROFILE_PWD" \
         | run_cmd systemd-creds encrypt --name="${PROFILE}.cred" /dev/stdin "$CRED_FILE"
     fi
@@ -1038,15 +1042,15 @@ main() {
   log_banner "Network Shares Setup"
   install_cifs_nfs
 
+  if [ "$RUN_SETUP_ALL" -eq 1 ] || [ "$FLG_ACT_CREATE_CREDS" -eq 1 ]; then
+    log_step "Creating SMB credentials..."
+    create_credentials
+  fi
+
   if [ "$RUN_SETUP_ALL" -eq 1 ] || [ "$FLG_ACT_CREATE_UNITS" -eq 1 ]; then
     log_step "Creating systemd unit files..."
     create_units
     enable_restart_units_files
-  fi
-
-  if [ "$RUN_SETUP_ALL" -eq 1 ] || [ "$FLG_ACT_CREATE_CREDS" -eq 1 ]; then
-    log_step "Creating SMB credentials..."
-    create_credentials
   fi
 
   log_ok "Network share setup complete."
