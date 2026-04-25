@@ -353,7 +353,7 @@ collect_services_to_install() {
         ;;
       git)
         write_cfg "SCRIPT_${TOOL}" "install_host_git_project.sh"
-        collect_git_config
+        #collect_git_config
         ;;
       docker)
         write_cfg "SCRIPT_${TOOL}" "install_docker.sh"
@@ -363,7 +363,7 @@ collect_services_to_install() {
         ;;
       nfs_samba)
         write_cfg "SCRIPT_${TOOL}" "install_host_network_shares.sh"
-        collect_network_config
+        #collect_network_config
         ;;
       ansible)
         write_cfg "SCRIPT_${TOOL}" "install_ansible"
