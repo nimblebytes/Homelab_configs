@@ -1,0 +1,23 @@
+mounts:
+  - name: media
+    type: smb
+    source: //eatalot/media
+    target: /mnt/smb_eatalot_media
+    user_profile: profile1
+
+  - name: backups
+    type: smb
+    source: //eatalot/backups
+    target: /mnt/backups
+    user_profile: profile1
+
+
+  # - name: bootstrap
+  #   type: nfs
+  #   source: nfs_server_ip:/bootstrap
+  #   target: /mnt/bootstrap
+
+  # - name: data2
+  #   type: nfs
+  #   source: nfs_server_fqdn:/data2
+  #   target: /mnt/data2
