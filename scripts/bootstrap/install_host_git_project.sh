@@ -13,7 +13,7 @@
 #set -x  # Enable script debugging
 
 ## Script variables - default values
-HOSTNAME=${HOSTNAME}
+HOSTNAME=$(uname -n)
 REPO_ORG=nimblebytes
 REPO_PROJECT=Homelab_configs
 REPO_BRANCH=master
@@ -196,7 +196,7 @@ pull_git_project() {
   [ -n "$GIT_OUT" ] && log_debug "$GIT_OUT"
 
   ## Checkout only the folder with the system host name
-  log_info "Setting sparse-checkout path: ${REPO_SERVER_PROJ:-<REPO_SERVER_PROJ is empty>}"
+  log_info "Setting sparse-checkout path: ${REPO_SERVER_PROJ:-<REPO_SERVER_PROJ> is empty}"
   GIT_OUT=$(git sparse-checkout set $REPO_SERVER_PROJ 2>&1)
   if [ $? -ne 0 ]; then
     log_error "git sparse-checkout set failed for: $REPO_SERVER_PROJ"
