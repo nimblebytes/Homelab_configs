@@ -92,7 +92,7 @@ Options:
   --share-config <file>    Path to the YAML network share config file.
                            If not provided the script searches:
                              1. Current working directory
-                             2. /opt/git/*/configs/
+                             2. /opt/git/*/config/
   --logger <file>          Path to better_logs.sh for structured log output.
                            Default: no file logging, fallback stubs used.
   --create-units           Create systemd unit files (and enable them).
@@ -290,7 +290,7 @@ load_config_file() {
 ## Locates the YAML share config file when SHARE_CONFIG_FILE is not already set.
 ## Search order:
 ##   1. Current working directory — network_mounts.yaml
-##   2. /opt/git/*/configs/network_mounts.yaml  (glob expanded by the shell)
+##   2. /opt/git/*/config/network_mounts.yaml  (glob expanded by the shell)
 ## Sets SHARE_CONFIG_FILE to the first match found and logs the path.
 ## Exits with code 1 if no file is found, as nothing can proceed without it.
 find_share_config_file() {
@@ -310,9 +310,9 @@ find_share_config_file() {
     return 0
   fi
 
-  ## Search 2: /opt/git/*/configs/ — use a for loop so the glob is
+  ## Search 2: /opt/git/*/config/ — use a for loop so the glob is
   ## expanded by the shell without requiring nullglob (not POSIX)
-  for CANDIDATE in /opt/git/*/configs/network_mounts.yaml; do
+  for CANDIDATE in /opt/git/*/config/network_mounts.yaml; do
     if [ -f "$CANDIDATE" ]; then
       SHARE_CONFIG_FILE="$CANDIDATE"
       log_info "Share config found at: $SHARE_CONFIG_FILE"
@@ -322,7 +322,7 @@ find_share_config_file() {
 
   log_error "No share config file found."
   log_error "Provide one with --share-config, set SHARE_CONFIG_FILE, or place"
-  log_error "network_mounts.yaml in the current directory or /opt/git/*/configs/"
+  log_error "network_mounts.yaml in the current directory or /opt/git/*/config/"
   exit 1
 }
 
