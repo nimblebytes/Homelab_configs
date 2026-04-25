@@ -133,7 +133,7 @@ create_template(){
   if [ -f "$DEF_AUTHORISED_SSH_KEYS" ]; then 
     ADD_SSH_KEYS="true"
   else
-    log_warn "No ssh keys added to image. File not file: ${DEF_AUTHORISED_SSH_KEYS}."
+    log_warn "No ssh keys added to image. File not found: OS=${C_LRED}${DEF_AUTHORISED_SSH_KEYS}${C_RESET}."
     log_warn "Proceeding without any ssh keys."
   fi
 
