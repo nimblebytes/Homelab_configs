@@ -616,11 +616,19 @@ create_credentials() {
 
     CRED_FILE="$CONST_CRED_DIR/${PROFILE}.cred"
     if [ ! -f "$CRED_FILE" ]; then
-      printf "Username for %s: " "$PROFILE"
-      read -r PROFILE_USER
-      printf "Password for %s: " "$PROFILE"
-      stty -echo; read -r PROFILE_PWD; stty echo; printf "\n"
-
+      if [ -t 0 ]; then
+        log_info "Non-interactive mode: Reading in username and password for profile: $PROFILE"
+        read -r PROFILE_USER
+        read -r PROFILE_PWD
+      else
+        printf "Username for %s: " "$PROFILE"
+        read -r PROFILE_USER < /dev/tty
+        printf "Password for %s: " "$PROFILE"
+        ## Not suppressing output to the terminal to make it easier to enter complex passwords.
+        # stty -echo
+        read -r PROFILE_PWD < /dev/tty
+        # stty echo
+      fi
       printf "username=%s\npassword=%s" "$PROFILE_USER" "$PROFILE_PWD" \
         | run_cmd systemd-creds encrypt --name="${PROFILE}.cred" /dev/stdin "$CRED_FILE"
     fi
