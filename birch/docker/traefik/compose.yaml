@@ -94,7 +94,7 @@ services:
       homepage.widget.password: "{{HOMEPAGE_FILE_TRAEFIK_PASSWORD}}"
 
   whoami:
-    image: traefik/whoami:v1.10.2
+    image: traefik/whoami:v1.11.0
     container_name: "whoami"
     networks:
       proxy: {}
