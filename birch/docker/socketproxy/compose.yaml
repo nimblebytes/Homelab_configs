@@ -23,7 +23,7 @@ services:
   ## Docker Socket Proxy - Security Enchanced Proxy for Docker Socket
   dockersocketproxy:
     container_name: ${CONTAINER_NAME:-socketproxy}
-    image: ghcr.io/tecnativa/docker-socket-proxy:0.2.0
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.4.2
     restart: unless-stopped
     networks:
       socketproxy: {}
