@@ -633,6 +633,7 @@ create_credentials() {
         read -r PROFILE_PWD
       fi
 
+      ## To debug/check that the password was correct use: systemd-creds decrypt "$CRED_FILE"
       printf "username=%s\npassword=%s" "$PROFILE_USER" "$PROFILE_PWD" \
         | run_cmd systemd-creds encrypt --name="${PROFILE}.cred" /dev/stdin "$CRED_FILE"
     fi
