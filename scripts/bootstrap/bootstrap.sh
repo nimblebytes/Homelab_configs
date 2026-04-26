@@ -48,7 +48,7 @@ REPO_BOOTSTRAP_BASE_URL="${REPO_BASE_URL}/scripts/bootstrap"
 
 SCRIPT_DIR="/opt/scripts"             ## Directory where scripts will be downloaded to
 WORK_DIR="/tmp/bootstrap_$$"          ## For temporary files created and used by this script
-LOG_FILE="${WORK_DIR}/bootstrap.log"
+LOG_FILE="${WORK_DIR}.log"
 CONFIG_FILE=""                        ## Derived after WORK_DIR is finalised — see init_config()
 PKG_MGR=""                            ## Detected at preflight time
 NON_INTERACTIVE="false"               ## Toggled by --non-interactive flag
@@ -256,7 +256,17 @@ load_config_overrides() {
 ## All values gathered by collect_* functions are written to CONFIG_FILE.
 ## Sensitive values (passwords, tokens) are only ever held in that mode-600
 ## temp file and are never written to the log.
-write_cfg() { printf '%s="%s"\n' "$1" "$2" >> "$CONFIG_FILE"; }
+write_cfg() { 
+  ## Check if the configuration key already exists in the file
+  if grep -q "^${1}=" "$CONFIG_FILE"; then
+    ## Escape all characters that can break sed expression handling: &/\|
+    VALUE_ESCAPED=$(printf '%s\n' "$2" | sed 's/[&\/\\|]/\\&/g')
+    ## Replace the line that starts with the pattern
+    sed -i "s|^${1}=.*|${1}=\"${VALUE_ESCAPED}\"|" "$CONFIG_FILE"
+  else
+    printf '%s="%s"\n' "$1" "$2" >> "$CONFIG_FILE"
+  fi  
+}
 
 ## =============================================================================
 ## Dialog Helpers
@@ -303,6 +313,16 @@ dialog_passwordbox() {
     --title "$TITLE" \
     --passwordbox "$PROMPT" \
     10 $DIALOG_WIDTH \
+    3>&1 1>&2 2>&3
+}
+
+dialog_radiolist() {
+  TITLE="$1"; PROMPT="$2"; shift 2
+  dialog --erase-on-exit \
+    --title "$TITLE" \
+    --radiolist "$PROMPT" \
+    $DIALOG_HEIGHT $DIALOG_WIDTH 10 \
+    "$@" \
     3>&1 1>&2 2>&3
 }
 
@@ -428,24 +448,14 @@ collect_samba_config() {
 collect_docker_config() {
   log_step "Collecting Docker configuration..."
 
-  DOCKER_COMPOSE_DIR=$(dialog_inputbox "Docker" \
-    "Path to store Compose project files:" \
-    "/opt/docker") || true
-  write_cfg DOCKER_COMPOSE_DIR "$DOCKER_COMPOSE_DIR"
+  SELECTED=$(dialog_checklist \
+    "Docker installation type" \
+    "Select the Docker installation type:" \
+    "rootful"  "Rootful installation (default=)"      on  \
+    "rootless" "Rootless installation (more secure)"  off \
+  ) || { log_warn "Docker installation type selection cancelled."; exit 0; }
 
-  if dialog_yesno "Docker Registry" \
-    "Do you need to log in to a private Docker registry?"; then
-
-    REGISTRY_URL=$(dialog_inputbox "Registry" \
-      "Registry URL (leave blank for Docker Hub):") || true
-    REGISTRY_USER=$(dialog_inputbox "Registry" "Username:") || true
-    REGISTRY_PASS=$(dialog_passwordbox "Registry" \
-      "Password / token (not logged):") || true
-
-    write_cfg REGISTRY_URL  "$REGISTRY_URL"
-    write_cfg REGISTRY_USER "$REGISTRY_USER"
-    write_cfg REGISTRY_PASS "$REGISTRY_PASS"
-  fi
+  write_cfg "ARGS_DOCKER"   "--docker-${SELECTED}"
 }
 
 ## =============================================================================
