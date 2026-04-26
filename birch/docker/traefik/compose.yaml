@@ -1,0 +1,110 @@
+name: traefik_stack
+
+########################### NETWORKS
+networks:
+  socketproxy:
+    external: "true"
+  proxy:
+    external: "true"
+  security:                             ## Security services: Authelia, CrowdSec        
+    external: "true"
+
+########################### SECRETS
+secrets:
+  acme_email:
+    file: ${DOCKER_SECRETS:?}/acme_email_admin
+  cloudflare_email:
+    file: ${DOCKER_SECRETS:?}/cloudflare_email
+  cloudflare_api_key:
+    file: ${DOCKER_SECRETS:?}/cloudflare_api
+
+########################### SERVICES
+services:
+  traefik:
+    image: traefik:v3.6.8
+    container_name: "${CONTAINER_NAME:-traefik}"
+    restart: unless-stopped
+    networks:
+      proxy:
+        ## Assigned static IP (optional). 
+        ##  - To trust forwarded header some container require that trusted 
+        ##    sources (reserve proxies) are define their config setting
+        ipv4_address: 172.27.0.250                  
+      socketproxy: {}
+      security: {}
+    ports:
+      # - "${HOST_IP:?}:80:80"                      ## http-internal. ${HOST_IP:?}: Expose on a specific Interface, useful for link inside Portainer
+      # - "${HOST_IP:?}:443:443"                    ## https-internal. ${HOST_IP:?}: Expose on a specific Interface, useful for link inside Portainer
+      - "80:80"                                   ## http-internal. Any Interface
+      - "443:443"                                 ## https-internal. Any Interface
+      
+    ## File containing environment variables to be inserted into the container
+    env_file: 
+      - .env.traefik 
+    environment: 
+      # PUID: "${PUID_DOCKER:?}"                                        ## Not needed on Docker Rootless install
+      # PGID: "${PGID_DOCKER:?}"                                        ## Not needed on Docker Rootless install
+      TZ: ${TZ:?}
+
+      ## Secrets: NOT in .env.traefik file to make it more visible and easier to manage
+      CF_API_EMAIL_FILE: /run/secrets/cloudflare_email
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cloudflare_api_key          ## API token with DNS:Edit permission
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL: /run/secrets/acme_email
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_DNS_ACME_EMAIL: /run/secrets/acme_email
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_TESTING_ACME_EMAIL: /run/secrets/acme_email
+
+    volumes:
+      ## Using socker proxy defined in the static config file
+      # - "${DOCKER_SOCK:?}:/var/run/docker.sock:ro"             
+      
+      #### Config files/folders to control traefik 
+      - "${CONTAINER_CONFIG:?}/traefik_static_config.yml:/traefik.yml:ro"
+      - "${CONTAINER_CONFIG:?}/dynamic_config.d:/config:ro"
+
+      #### Dynamic files/folders modified by traefik
+      - "${CONTAINER_VOLUME:?}/acme.json:/acme.json"      
+      - "${CONTAINER_VOLUME:?}/traefik_access.log:/var/log/traefik_access.log"
+      # - "${CONTAINER_VOLUME:?}/traefik.log:/var/log/traefik.log"      ## Disabled within "traefik.yml" config file, so that logs are viewable/accessible through Docker logs or Portainer.
+      - "${DOCKER_SECRETS}/.htpasswd:/shared/.htpasswd"               ## Only needed for the "auth-basic-traefik" middleware in the dynamic config; breaks services if needed and not present. Double check config, else remove.
+    secrets:
+      - acme_email
+      - cloudflare_email
+      - cloudflare_api_key
+      
+    labels:
+      # Traefik Dashboard
+      traefik.enable: "true"
+      traefik.http.routers.traefik.rule: 'Host(`traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}`) || Host(`traefik`) ' 
+      traefik.http.routers.traefik.entrypoints: https-internal        ## Only available for the internal network
+      traefik.http.routers.traefik.service: api@internal
+      traefik.http.routers.traefik.tls.certresolver: letsencrypt_dns  ## Options: letsencrypt_testing; letsencrypt; letsencrypt_dns
+      traefik.http.routers.traefik.tls.domains[0].main: "traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}"
+      traefik.http.routers.traefik.tls.domains[0].sans: "*.traefik.${HOSTNAME:?}.${DOMAIN_NAME:?}"
+      traefik.http.routers.traefik.middlewares: auth-basic-traefik@file
+
+      # Labels for Homepage Dashboard
+      homepage.group: Docker Managers
+      homepage.name: Traefik ${HOSTNAME}
+      homepage.icon: traefik.svg
+      homepage.href: https://traefik.${HOSTNAME}.${DOMAIN_NAME:?}
+      homepage.description: Traefik Proxy for internal services
+      homepage.widget.type: traefik
+      homepage.widget.url: "https://${CONTAINER_NAME:-traefik}:443"
+      homepage.widget.username: "{{HOMEPAGE_FILE_TRAEFIK_USERNAME}}"
+      homepage.widget.password: "{{HOMEPAGE_FILE_TRAEFIK_PASSWORD}}"
+
+  whoami:
+    image: traefik/whoami:v1.10.2
+    container_name: "whoami"
+    networks:
+      proxy: {}
+    labels:
+      traefik.enable: "true"
+      # traefik.http.routers.whoami.rule: 'Host(`whoami.${HOSTNAME:?}.${DOMAIN_NAME:?}`) || (Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))'
+      traefik.http.routers.whoami.rule: '(Host(`${HOSTNAME:?}.${DOMAIN_NAME:?}`) && PathPrefix(`/whoami`))'  ## HOST rule needed to remove the WRN message in logs 
+      # traefik.http.routers.whoami.rule: 'PathPrefix(`/whoami`)'
+      traefik.http.routers.whoami.priority: "1000"
+      traefik.http.routers.whoami.entrypoints: https-internal         ## Only available for the internal network
+      traefik.http.services.whoami.loadbalancer.server.port: "80"
+      traefik.http.routers.whoami.tls.certresolver: letsencrypt_dns
+     
