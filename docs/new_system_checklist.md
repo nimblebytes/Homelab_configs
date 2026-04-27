@@ -2,6 +2,11 @@
 
 This document provides the list of steps that need be performed for the creation a new virtual machine. The orchestration platform that is used and referenced in this documentation is Proxmox, but they concepts can be transposed to any other platform.
 
+> [!IMPORTANT] tl;dr
+> Run bootstrap script with:
+> 
+> ```wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sh```
+
 This list is just a guide to ensure that the most common issues are considered, and performed as required, to minimise effort troubleshooting problems later on.
 
 1. VM creation and pre-configurations prior to first start
@@ -38,6 +43,8 @@ This list is just a guide to ensure that the most common issues are considered, 
       4. Internet: `ping google.com`
       5. External DNS: `nslookup google.com 9.9.9.9`
    2. Run the main [bootstrap script](../scripts/bootstrap/bootstrap.sh). Refer to the [script documentation](../scripts/bootstrap/README.md) for additional details.
-      1. Run the script with: ```wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sh```
-    > [!NOTE]
-    >The scripts assume that the domain search parameter for DNS is configured. This allows hosts to be found using their hostname and ***not*** requiring their FQDN. This is helpful, so that the domain does not need to be hard-coded into configs or scripts files.
+      1. Run the script with: 
+   
+   ```wget -q -O - https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/bootstrap/bootstrap.sh | sh```
+    > [!WARNING] Note
+    > The scripts assume that the domain search parameter for DNS is configured. This allows hosts to be found using their hostname and ***not*** requiring their FQDN. This is helpful, so that the domain does not need to be hard-coded into configs or scripts files.
