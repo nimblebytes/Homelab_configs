@@ -546,7 +546,7 @@ modify_bashrc_file() {
               printf "%s\n" "$END_MARK"
           } >> "$FILE"
         else
-            echo "Download failed — nothing written" >&2
+          log_warn "Failed to download .bashrc stub for docker — local file not modified."
         fi
       fi
       rm -f "$TMP"
@@ -705,14 +705,11 @@ main() {
 
 
   if [ "$FLG_UNINSTALL" -eq 1 ]; then
-    log_step "Uninstall docker (rootful)"
     uninstall_docker
   else
     if [ "$FLG_DOCKER_ROOTLESS" -eq 1 ]; then
-      log_step "Install docker (rootless)"
       install_docker_rootless
     else
-      log_step "Install docker (rootful)"
       install_docker_rootful
     fi
   fi
