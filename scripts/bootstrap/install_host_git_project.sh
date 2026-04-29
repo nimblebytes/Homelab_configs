@@ -186,8 +186,8 @@ pull_git_project() {
     return 1
   fi
 
-  log_info "Initialising sparse-checkout (cone mode)..."
-  GIT_OUT=$(git sparse-checkout init --cone 2>&1)
+  log_info "Initialising sparse-checkout (no-cone mode)..."
+  GIT_OUT=$(git sparse-checkout init --no-cone 2>&1)
   if [ $? -ne 0 ]; then
     log_error "git sparse-checkout init failed"
     [ -n "$GIT_OUT" ] && log_error "$GIT_OUT"
@@ -303,6 +303,8 @@ main(){
   detect_root_sudo
   load_logger
   load_config
+
+  log_banner "Git install script "
   
   log_step "Installing git..."
   install_git
