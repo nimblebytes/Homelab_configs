@@ -52,8 +52,9 @@ export HOST_IP=$(ip -o -4 addr show dev "$HOST_IFACE" | awk '{print $4}' | cut -
 export HOSTNAME=$(hostname)
 export TZ="Europe/Berlin"
 
-export DOCKER_VOLUMES="/opt/git/${HOSTNAME}/docker/volumes"
-export DOCKER_SECRETS="/opt/git/${HOSTNAME}/docker/.secrets"
+export DOCKER_VOLUMES="/home/${USER}/docker/volumes"
+export DOCKER_SECRETS="/home/${USER}/docker/.secrets"
+
 export DOMAIN_NAME_PUBLIC=$(cat ${DOCKER_SECRETS}/domain_name_personal_public)
 export DOMAIN_NAME_INTERNAL=$(cat ${DOCKER_SECRETS}/domain_name_personal_internal)
 

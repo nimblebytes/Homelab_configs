@@ -135,35 +135,30 @@ detect_docker_install_type() {
 	fi
 }
 
-####### Variable used for Docker #######
-## HOST_IP: Check that the Interface (eth0, ens0) is correct or updated
-# export HOST_IFACE=ens18																			## User defined specific interface to use
-# export HOST_IFACE=$(ip -o link show | awk -F': ' '!/lo/ {print $2; exit}')		## Pick the first non-loopback interface
-export HOST_IFACE=$(ip route show default | awk '{print $5}')									## Pick the default route interface
-export HOST_IP=$(ip -o -4 addr show dev "$HOST_IFACE" | awk '{print $4}' | cut -d/ -f1)
-
-export HOSTNAME=${HOSTNAME}
-export TZ="Europe/Berlin"
-
 ## Determine and export Docker install type variables
 detect_docker_install_type
 export DOCKER_TYPE
 export DOCKER_SOCK
+export PATH=/usr/bin:$PATH
+export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
 
-export PUID=$(id -u $USER)
-export PGID=$(id -g $USER)
-export PUID_DOCKER=$PUID
-export PGID_DOCKER=$PGID
+####### Variables used in Docker compose files #######
+export PUID_DOCKER=$(id -u $USER)
+export PGID_DOCKER=$(id -g $USER)
 ## If a docker user and group has been created.
 # export PUID_DOCKER=$(id -u docker)
 # export PGID_DOCKER=$(getent group docker | awk -F: '{printf "%d", $3}')
 
+export HOST_IFACE=$(ip route show default | awk '{print $5}')									## Pick the default route interface
+export HOST_IP=$(ip -o -4 addr show dev "$HOST_IFACE" | awk '{print $4}' | cut -d/ -f1)
+export HOSTNAME=$(hostname)
+export TZ="Europe/Berlin"
 
 export DOCKER_VOLUMES="/home/${USER}/docker/volumes"
 export DOCKER_SECRETS="/home/${USER}/docker/.secrets"
 
-export DOMAIN_NAME=$(cat ${DOCKER_SECRETS}/domain_name_personal_public)
-export INTERNAL_DOMAIN_NAME=$(cat ${DOCKER_SECRETS}/domain_name_personal_internal)
+export DOMAIN_NAME_PUBLIC=$(cat ${DOCKER_SECRETS}/domain_name_personal_public)
+export DOMAIN_NAME_INTERNAL=$(cat ${DOCKER_SECRETS}/domain_name_personal_internal)
 
 ## Service specific variables
-export TRAEFIK_URL_NAS_PUBLIC_FILE=$(cat ${DOCKER_SECRETS}/nas_3P_public__domain_url)
+export TRAEFIK_URL_NAS_PUBLIC_FILE=$(cat ${DOCKER_SECRETS}/nas_3P_public_domain_url)
