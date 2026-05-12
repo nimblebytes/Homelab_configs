@@ -63,7 +63,7 @@ status_message() {
 
 ## Check to see if the docker variable exists
 if [ -z "$DOCKER_VOLUMES" ]; then
-  status_message "$LOG_LEVEL_ERROR " "Enviroment variables used for docker are missing. Create ${LIGHT_CYAN}.bashrc file to export variables the needed"
+  status_message "$LOG_LEVEL_ERROR " "Environment variables used for docker are missing. Create ${LIGHT_CYAN}.bashrc${RESET} file to export variables the needed"
   exit 1
 fi
 
@@ -83,10 +83,10 @@ else
 fi
 
 if [ ! -z "${CONTAINER_VOLUME}" ]; then
-  status_message "$LOG_LEVEL_INFO" "Creating folder for container persistant files: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
+  status_message "$LOG_LEVEL_INFO" "Creating folder for container persistent files: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
   [ ! -d "${CONTAINER_VOLUME}" ] && mkdir -p mkdir -p "${CONTAINER_VOLUME}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
 else
-  status_message "$LOG_LEVEL_ERROR " "Variable CONTAINER_VOLUME is not defined or empty. Defines where the container needs to store persistant data"
+  status_message "$LOG_LEVEL_ERROR " "Variable CONTAINER_VOLUME is not defined or empty. Defines where the container needs to store persistent data"
   lvar_SCRIPT_STATUS=1
 fi
 
