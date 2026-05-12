@@ -5,17 +5,7 @@ name: "core-network"
 ########################### NETWORKS
 networks:
   socketproxy:
-    name: socketproxy
-    internal: "true"
-    ipam:
-      config:
-        - subnet: 172.31.0.0/24
-          ip_range: 172.31.0.0/24
-          # gateway: 172.31.1.1
-          # aux_addresses:                                  ## IP Address already in use
-          #   RESERVED_02: 172.31.0.2
-    labels:
-      internal.docker.network.description: "Docker socket network (${HOSTNAME:-Hostname missing})"               
+    external: "true"
         
 
 ########################### Services     

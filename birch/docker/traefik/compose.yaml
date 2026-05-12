@@ -6,6 +6,8 @@ networks:
     external: "true"
   proxy:
     external: "true"
+  proxy_isolate:
+    external: "true"
   security:                             ## Security services: Authelia, CrowdSec        
     external: "true"
 
@@ -29,7 +31,8 @@ services:
         ## Assigned static IP (optional). 
         ##  - To trust forwarded header some container require that trusted 
         ##    sources (reserve proxies) are define their config setting
-        ipv4_address: 172.27.0.250                  
+        ipv4_address: 172.27.0.250
+      proxy_isolate: {}                  
       socketproxy: {}
       security: {}
     ports:
