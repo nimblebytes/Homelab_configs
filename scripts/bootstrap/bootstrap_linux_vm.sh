@@ -12,7 +12,7 @@
 #set -x  # Enable script debugging
 
 ## Script variables - default values
-var_HOSTNAME=${HOSTNAME}
+var_HOSTNAME=$(hostname)
 
 
 ## Flags used within the script
