@@ -19,7 +19,7 @@
 ## Author: nimblebytes (GitHub)
 ## =============================================================================
 
-## ## set -x  ## Uncomment to enable shell tracing for debugging
+# set -x  ## Uncomment to enable shell tracing for debugging
 set -eu
 
 ## =============================================================================
@@ -334,6 +334,24 @@ install_docker_rootful(){
 
   install_docker || { log_error "Failed to install docker (rootful). Exiting script";  exit 1; }
 
+  log_info "Creating docker group and adding user to the group"
+  "$SUDO" groupadd docker
+
+  ## Add (real) user and not root to docker group
+  if [ -n "$REAL_USER" ]; then
+    "$SUDO" usermod -aG docker $REAL_USER
+    ## Apply new group without needing to logout
+    newgrp docker
+  fi
+
+  ## Reset docker context to rootful socket (clears any stale rootless context)
+  log_info "Resetting docker default context to rootful socket"
+  if [ -n "$REAL_USER" ]; then
+    su - "$REAL_USER" -c 'docker context update default --docker "host=unix:///var/run/docker.sock" 2>/dev/null || rm -rf ~/.docker/contexts'
+  else
+    docker context update default --docker "host=unix:///var/run/docker.sock" 2>/dev/null || rm -rf ~/.docker/contexts
+  fi
+
   ## Add docker environment variables
   modify_bashrc_file "add"
 
@@ -432,8 +450,8 @@ uninstall_docker(){
   fi
 
   ## --------------------------------------------------------
-  ## Uninstall docker packages
-  for pkg in docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras; do 
+  ## Uninstall docker packages  
+  for pkg in docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras slirp4netns; do 
     "$SUDO" apt-get purge -y -qq $pkg >/dev/null 2>&1 || true
   done
   "$SUDO" apt-get autoremove -y -qq >/dev/null 2>&1 || true
@@ -447,6 +465,15 @@ uninstall_docker(){
     ## /var/lib/containerd: content store, snapshots
     [ -d "/var/lib/docker" ]     && "$SUDO" rm -rf /var/lib/docker    
     [ -d "/var/lib/containerd" ] && "$SUDO" rm -rf /var/lib/containerd
+    ## Remove the docker group
+    if getent group "docker" >/dev/null 2>&1; then
+      ## Remove from all users' secondary groups
+      for user in $(getent group "docker" | awk -F: '{print $4}' | tr ',' ' '); do
+        [ -n "$user" ] && "$SUDO" gpasswd -d "$user" "docker"
+      done
+      "$SUDO" groupdel "docker" || log_error "Failed to remove group: Docker"
+    fi
+
     ## Rootless data
     ## ~/.local/share/docker: rootless images, volumes
     if [ -n "$REAL_HOME" ]; then
@@ -492,7 +519,7 @@ uninstall_docker(){
 ## slirp4netns, and docker-ce-rootless-extras; disabling the system daemon;
 ## running dockerd-rootless-setuptool.sh; and enabling the user-level systemd
 ## service with loginctl linger.
-## After the base install, calls modify_bashrc_file to export the DOCKER_HOST
+## After the base install, calls modify_bashrc_file to export the DOCKER_SOCK
 ## and DOCKER_TYPE variables into REAL_USER's .bashrc.
 ## Exits with code 1 if the base installation fails.
 install_docker_rootless(){
@@ -500,6 +527,16 @@ install_docker_rootless(){
   log_step "Install Docker (rootless)..."
 
   install_docker || { log_error "Failed to install docker (rootless). Exiting script";  exit 1; }
+
+  ## Create docker group and add user
+  [ ! getent group "docker" >/dev/null 2>&1 ] && "$SUDO" groupadd "docker"
+
+  ## Add (real) user and not root to docker group
+  if [ -n "$REAL_USER" ]; then
+    "$SUDO" usermod -aG docker $REAL_USER
+    ## Apply new group without needing to logout
+    newgrp docker
+  fi  
 
   ## Add docker environment variables to .bashrc and current shell
   modify_bashrc_file "add"
@@ -523,6 +560,9 @@ install_docker_rootless(){
 ## The function is a no-op if the block is already present (add) or already
 ## absent (remove). Returns 1 on unknown action.
 modify_bashrc_file() {
+
+  ## Do not modify bashrc if running as root
+  [ -z "$REAL_USER" ] && return 0
 
   OPTIONS="$1"
   FILE="$HOME/.bashrc"
@@ -565,9 +605,6 @@ modify_bashrc_file() {
       return 1
       ;;
   esac
-
-  ## Load the new environment variables into this script
-  . "$HOME/.bashrc"
 }
 
 ## =============================================================================
@@ -641,6 +678,7 @@ parse_args() {
         ;;
       -u|--uninstall)
         if [ -z "$VALUE" ]; then 
+          VALUE="$2"
           if [ "$VALUE" = "purge" ]; then FLG_PURGE=1; shift; fi
         fi
         FLG_UNINSTALL=1

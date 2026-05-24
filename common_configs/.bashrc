@@ -118,6 +118,7 @@ detect_docker_install_type() {
 		local SOCKET
 		DOCKER_CONTEXT=$(docker context show 2>/dev/null)
 		SOCKET=$(docker context inspect "${DOCKER_CONTEXT:-default}" --format '{{.Endpoints.docker.Host}}' 2>/dev/null)
+		SOCKET2=unix://$XDG_RUNTIME_DIR/docker.sock
 		case "$SOCKET" in
 			unix:///run/user/*/docker.sock)
 				DOCKER_TYPE="rootless"
@@ -140,7 +141,6 @@ detect_docker_install_type
 export DOCKER_TYPE
 export DOCKER_SOCK
 export PATH=/usr/bin:$PATH
-export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
 
 ####### Variables used in Docker compose files #######
 export PUID_DOCKER=$(id -u $USER)
