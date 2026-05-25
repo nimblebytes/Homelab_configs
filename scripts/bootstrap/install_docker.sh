@@ -335,21 +335,18 @@ install_docker_rootful(){
   install_docker || { log_error "Failed to install docker (rootful). Exiting script";  exit 1; }
 
   log_info "Creating docker group and adding user to the group"
-  "$SUDO" groupadd docker
+  [ ! getent group "docker" >/dev/null 2>&1 ] && "$SUDO" groupadd "docker"
 
   ## Add (real) user and not root to docker group
   if [ -n "$REAL_USER" ]; then
     "$SUDO" usermod -aG docker $REAL_USER
-    ## Apply new group without needing to logout
-    newgrp docker
+    log_warn "User '$REAL_USER' added to docker group. You need to logout first before this take affect."
   fi
 
   ## Reset docker context to rootful socket (clears any stale rootless context)
   log_info "Resetting docker default context to rootful socket"
   if [ -n "$REAL_USER" ]; then
-    su - "$REAL_USER" -c 'docker context update default --docker "host=unix:///var/run/docker.sock" 2>/dev/null || rm -rf ~/.docker/contexts'
-  else
-    docker context update default --docker "host=unix:///var/run/docker.sock" 2>/dev/null || rm -rf ~/.docker/contexts
+    [ -f "${REAL_HOME}/.docker/contexts" ] && rm -rf "${REAL_HOME}/.docker/contexts"
   fi
 
   ## Add docker environment variables
