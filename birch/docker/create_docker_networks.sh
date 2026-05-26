@@ -7,7 +7,7 @@ docker network create \
   --subnet=172.31.0.0/24 \
   --ip-range=172.31.0.0/24 \
   --label "com.docker.compose.network=${NETWORK_NAME}" \
-  --label "internal.docker.network.description=Docker socket network ${HOSTNAME:-no_hostname}"
+  --label "internal.docker.network.description=Docker socket network ${HOSTNAME:-no_hostname}" \
   ${NETWORK_NAME} 
 
 ## Create a network for security services to connect. These services need 
