@@ -24,9 +24,9 @@ networks:
 ########################### SECRETS
 secrets:
   acme_email:
-    file: ${DOCKER_SECRETS:?}/acme_email_admin
+    file: ${DOCKER_SECRETS:?}/acme_email_admin    ## Email for acme certificates
   cloudflare_email:
-    file: ${DOCKER_SECRETS:?}/cloudflare_email
+    file: ${DOCKER_SECRETS:?}/cloudflare_email    ## Login for DNS channels
   cloudflare_api_key:
     file: ${DOCKER_SECRETS:?}/cloudflare_api_witchdoctor
   crowdsec_bouncer_key:

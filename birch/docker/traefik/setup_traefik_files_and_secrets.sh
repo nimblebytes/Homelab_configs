@@ -76,7 +76,7 @@ lvar_SCRIPT_STATUS=0                                          ## Flag to check i
 
 if [ ! -z "${CONTAINER_CONFIG}" ]; then
   status_message "$LOG_LEVEL_INFO" "Creating folder for container config files: ${LIGHT_CYAN}${CONTAINER_CONFIG}${RESET}"
-  [ ! -d "${CONTAINER_CONFIG}" ] && mkdir  -p "${CONTAINER_CONFIG}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${CONTAINER_CONFIG}${RESET}"
+  [ ! -d "${CONTAINER_CONFIG}" ] && mkdir -p "${CONTAINER_CONFIG}/dynamic_config.d" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${CONTAINER_CONFIG}${RESET}"
 else
   status_message "$LOG_LEVEL_ERROR " "Variable CONTAINER_CONFIG is not defined or empty. Defines where to store configs files needed by the container."
   lvar_SCRIPT_STATUS=1
@@ -84,7 +84,7 @@ fi
 
 if [ ! -z "${CONTAINER_VOLUME}" ]; then
   status_message "$LOG_LEVEL_INFO" "Creating folder for container persistent files: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
-  [ ! -d "${CONTAINER_VOLUME}" ] && mkdir  -p "${CONTAINER_VOLUME}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
+  [ ! -d "${CONTAINER_VOLUME}" ] && mkdir -p "${CONTAINER_VOLUME}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${CONTAINER_VOLUME}${RESET}"
 else
   status_message "$LOG_LEVEL_ERROR " "Variable CONTAINER_VOLUME is not defined or empty. Defines where the container needs to store persistent data"
   lvar_SCRIPT_STATUS=1
@@ -92,7 +92,7 @@ fi
 
 if [ ! -z "${DOCKER_SECRETS}" ]; then
   status_message "$LOG_LEVEL_INFO" "Creating folder for secrets: ${LIGHT_CYAN}${DOCKER_SECRETS}${RESET}"
-  [ ! -d "${DOCKER_SECRETS}" ] && mkdir  -p "${DOCKER_SECRETS}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${DOCKER_SECRETS}${RESET}"
+  [ ! -d "${DOCKER_SECRETS}" ] && mkdir -p "${DOCKER_SECRETS}" || status_message "$LOG_LEVEL_DEBUG" "Folder already exists: ${LIGHT_CYAN}${DOCKER_SECRETS}${RESET}"
 else
   status_message "$LOG_LEVEL_ERROR " "Variable DOCKER_SECRETS is not defined or empty. Defines where SECRETS are stored."
   lvar_SCRIPT_STATUS=1
@@ -103,6 +103,11 @@ if [ "$lvar_SCRIPT_STATUS" != "0" ]; then
   status_message "$LOG_LEVEL_ERROR " "Required environment variables are missing. ${RED}Exiting${RESET} to prevent files being created in the root folder."
 fi
 
+## Create files used for traefik configuration
+cd ${CONTAINER_CONFIG}
+status_message "$LOG_LEVEL_DEBUG" "Creating optional configuration files within folder ${LIGHT_CYAN}${CONTAINER_CONFIG}${RESET}"
+touch traefik_static_config.yml
+touch dynamic_config.d/middleware.yml
 
 ## Create files in the container persistent storage
 cd ${CONTAINER_VOLUME}
