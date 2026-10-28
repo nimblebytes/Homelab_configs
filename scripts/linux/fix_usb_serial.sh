@@ -1,175 +1,295 @@
 #!/bin/sh
 # fix_usb_serial.sh
-# Diagnose and fix missing /dev/ttyUSB and /dev/serial on Debian cloud images.
-
-set -e
+# Replace the Debian cloud kernel with the full kernel to enable USB serial support.
+#
+# Background:
+#   Debian 13 cloud images ship linux-image-*-cloud-amd64, a stripped kernel with
+#   no USB drivers. The fix is to install linux-image-amd64 and configure GRUB to
+#   boot it by default.
+#
+#   grub-cloud-amd64 places kernel entries inside a submenu, making GRUB_DEFAULT
+#   fragile to set. This script disables submenus first (GRUB_DISABLE_SUBMENU=y),
+#   which flattens all entries to the top level so the entry title can be matched
+#   directly — no submenu>entry ID parsing required.
+#
+# Usage:
+#   sudo ./fix_usb_serial.sh [--diagnose | --fix | --all | --help]
+#
+# POSIX-compliant. Requires: sh, apt-get, update-grub, uname, awk, ls, mkdir
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-log()  { printf '[INFO]  %s\n' "$*"; }
-log_warn() { printf '[log_warn]  %s\n' "$*"; }
-log_error()  { printf '[ERROR] %s\n' "$*" >&2; exit 1; }
+log_info()  { printf '[INFO]  %s\n' "$*"; }
+log_warn() { printf '[WARN]  %s\n' "$*"; }
+log_error()  { printf '[ERROR] %s\n' "$*" >&2; }
 
 require_root() {
     if [ "$(id -u)" -ne 0 ]; then
         log_error "This script must be run as root (use sudo)."
+        exit 1
     fi
 }
 
+is_cloud_kernel() {
+    case "$(uname -r)" in
+        *-cloud-*) return 0 ;;
+        *)         return 1 ;;
+    esac
+}
+
+has_usb_modules() {
+    USB_DIR="/lib/modules/$(uname -r)/kernel/drivers/usb"
+    [ -d "$USB_DIR" ] && find "$USB_DIR" -name '*.ko*' 2>/dev/null | grep -q .
+}
+
 # ---------------------------------------------------------------------------
-# Step 1 — Diagnose current state
+# Step 1 — Diagnose (read-only, no changes)
 # ---------------------------------------------------------------------------
 
 diagnose() {
     log_info "=== Diagnostic Report ==="
+    log_info "Kernel version : $(uname -r)"
 
-    log_info "Kernel: $(uname -r)"
-
-    log_info "Loaded USB serial modules:"
-    lsmod | grep -E 'usbserial|cdc_acm|ftdi|cp210|ch34' || log_warn "None loaded."
-
-    log_info "USB serial module files on disk:"
-    find /lib/modules/"$(uname -r)" -name '*.ko*' \
-        | grep -E 'ftdi|cp210|ch34|cdc_acm|usbserial' \
-        || log_warn "None found — modules-extra may not be installed."
-
-    log_info "USB devices visible to VM:"
-    if command -v lsusb >/dev/null 2>&1; then
-        lsusb || log_warn "lsusb returned no output."
+    if is_cloud_kernel; then
+        log_info "Kernel type    : CLOUD (USB drivers omitted — this is the problem)"
     else
-        log_warn "lsusb not available (install usbutils)."
+        log_info "Kernel type    : FULL"
     fi
 
-    log_info "Existing serial device nodes:"
-    ls /dev/ttyUSB* /dev/ttyACM* /dev/serial 2>/dev/null \
-        || log_warn "No serial device nodes found."
+    if has_usb_modules; then
+        log_info "USB modules    : Present on disk"
+    else
+        log_info "USB modules    : Not found on disk (expected on cloud kernel)"
+    fi
 
-    log_info "Relevant kernel messages (last 20):"
-    dmesg | grep -iE 'usb|tty|serial' | tail -20 || log_warn "No relevant dmesg entries."
+    log_info "--- Installed kernel packages ---"
+    dpkg -l 'linux-image-*' | grep '^ii' || log_info "None found"
+
+    log_info "--- GRUB configuration ---"
+    if [ -f /etc/default/grub ]; then
+        grep 'GRUB_DEFAULT\|GRUB_DISABLE_SUBMENU' /etc/default/grub \
+            || log_info "No relevant GRUB settings found"
+    fi
+    if [ -d /etc/default/grub.d ]; then
+        log_info "--- /etc/default/grub.d drop-ins ---"
+        ls /etc/default/grub.d/ 2>/dev/null || log_info "Empty"
+        for f in /etc/default/grub.d/*.cfg; do
+            [ -f "$f" ] && log_info "  $f:" && cat "$f"
+        done
+    fi
+
+    log_info "--- Serial device nodes ---"
+    ls /dev/ttyUSB* /dev/ttyACM* /dev/serial 2>/dev/null || log_info "None found"
 
     log_info "=== End Diagnostic ==="
+    return 0
 }
 
 # ---------------------------------------------------------------------------
-# Step 2 — Install required packages
+# Step 2 — Install the full kernel
 # ---------------------------------------------------------------------------
 
-install_packages() {
-    log_info "Updating package lists..."
-    apt-get update -qq
+install_full_kernel() {
+    log_info "=== Installing full kernel ==="
 
-    log_info "Installing usbutils and kmod..."
-    apt-get install -y usbutils kmod
-
-    MODULES_PKG="linux-modules-extra-$(uname -r)"
-    log_info "Checking for module files before installing extras..."
-
-    FOUND=$(find /lib/modules/"$(uname -r)" -name '*.ko*' \
-        | grep -E 'ftdi|cp210|ch34|cdc_acm|usbserial' | wc -l)
-
-    if [ "$FOUND" -eq 0 ]; then
-        log_info "USB serial modules not found. Installing ${MODULES_PKG}..."
-        apt-get install -y "${MODULES_PKG}" || {
-            log_warn "Could not install ${MODULES_PKG}."
-            log_warn "You may need to switch from a cloud kernel to linux-image-amd64."
-        }
-    else
-        log_info "Module files already present (${FOUND} found). Skipping extra modules install."
+    if has_usb_modules; then
+        log_info "USB driver modules already present. Skipping kernel install."
+        return 0
     fi
+
+    if ! is_cloud_kernel; then
+        log_warn "Not a cloud kernel but USB modules missing — unexpected state."
+        log_warn "Proceeding with install attempt."
+    fi
+
+    log_info "Cloud kernel detected: $(uname -r)"
+    log_info "Updating package lists..."
+    if ! apt-get update -qq; then
+        log_error "apt-get update failed. Check your network and apt sources, then re-run."
+        return 1
+    fi
+
+    log_info "Installing linux-image-amd64..."
+    if ! DEBIAN_FRONTEND=noninteractive apt-get install -y linux-image-amd64; then
+        log_error "Failed to install linux-image-amd64. Check apt output above, then re-run."
+        return 1
+    fi
+
+    log_info "Full kernel package installed."
+    return 0
 }
 
 # ---------------------------------------------------------------------------
-# Step 3 — Load modules
+# Step 3 — Configure GRUB to boot the full kernel by default
+#
+# Strategy (from Gemini's approach, which works correctly):
+#   1. Write GRUB_DISABLE_SUBMENU=y to a grub.d drop-in.
+#      This flattens all kernel entries to the top level, eliminating the
+#      submenu>entry ID complexity that grub-cloud-amd64 introduces.
+#   2. Run update-grub to regenerate grub.cfg with the flat layout.
+#   3. Find the new kernel version from /boot/vmlinuz-* (non-cloud, newest).
+#   4. Extract the exact menu entry title for that version using awk + index(),
+#      which does a literal string match — safe against '+' in version strings
+#      that would break regex-based matching.
+#   5. Write GRUB_DEFAULT="<title>" to a grub.d drop-in.
+#   6. Run update-grub a final time to bake the default into grub.cfg.
 # ---------------------------------------------------------------------------
 
-load_modules() {
-    log_info "Loading USB serial kernel modules..."
+update_bootloader() {
+    log_info "=== Updating bootloader ==="
 
-    for mod in usbserial cdc_acm ftdi_sio cp210x ch341; do
-        if modprobe "$mod" 2>/dev/null; then
-            log_info "  Loaded: ${mod}"
-        else
-            log_warn "  Could not load: ${mod} (may not be needed for your hardware)"
-        fi
-    done
+    GRUB_D_DIR="/etc/default/grub.d"
+    log_info "Creating GRUB drop-in directory: ${GRUB_D_DIR}"
+    if ! mkdir -p "$GRUB_D_DIR"; then
+        log_error "Failed to create ${GRUB_D_DIR}."
+        return 1
+    fi
+
+    # Step 3a — disable submenus so all entries are at the top level
+    log_info "Disabling GRUB submenus to flatten menu layout..."
+    if ! printf 'GRUB_DISABLE_SUBMENU=y\n' > "${GRUB_D_DIR}/99-disable-submenus.cfg"; then
+        log_error "Failed to write ${GRUB_D_DIR}/99-disable-submenus.cfg."
+        return 1
+    fi
+
+    # Step 3b — first update-grub to regenerate flat layout
+    log_info "Running update-grub (first pass — flatten menu)..."
+    if ! update-grub 2>&1; then
+        log_error "update-grub failed. Check output above."
+        return 1
+    fi
+
+    # Step 3c — find the newest non-cloud kernel version in /boot
+    log_info "Identifying new full kernel version..."
+    NEW_KVER=$(ls -1 /boot/vmlinuz-* 2>/dev/null \
+        | awk -F'/boot/vmlinuz-' '{print $2}' \
+        | grep -v 'cloud' \
+        | sort -V \
+        | tail -1)
+
+    if [ -z "$NEW_KVER" ]; then
+        log_error "Could not find a non-cloud kernel in /boot."
+        log_error "Ensure linux-image-amd64 installed correctly and try again."
+        return 1
+    fi
+
+    log_info "Found full kernel version: ${NEW_KVER}"
+
+    # Step 3d — extract exact menu entry title using literal string match
+    # awk index() is used instead of regex to safely handle '+' in version strings
+    log_info "Extracting GRUB menu entry title for ${NEW_KVER}..."
+    MENU_ENTRY=$(awk -F"'" -v ver="$NEW_KVER" '
+        /^[[:space:]]*menuentry / && index($0, ver) > 0 {
+            print $2
+            exit
+        }
+    ' /boot/grub/grub.cfg)
+
+    if [ -z "$MENU_ENTRY" ]; then
+        log_error "Could not find a GRUB menu entry for kernel ${NEW_KVER} in /boot/grub/grub.cfg."
+        log_error "Run: grep 'menuentry' /boot/grub/grub.cfg"
+        return 1
+    fi
+
+    log_info "Found menu entry: '${MENU_ENTRY}'"
+
+    # Step 3e — write GRUB_DEFAULT drop-in with the exact entry title
+    log_info "Writing GRUB default drop-in..."
+    if ! printf 'GRUB_DEFAULT="%s"\n' "$MENU_ENTRY" \
+            > "${GRUB_D_DIR}/99-set-standard-kernel.cfg"; then
+        log_error "Failed to write ${GRUB_D_DIR}/99-set-standard-kernel.cfg."
+        return 1
+    fi
+
+    # Step 3f — final update-grub to bake the default into grub.cfg
+    log_info "Running update-grub (second pass — set default)..."
+    if ! update-grub 2>&1; then
+        log_error "Final update-grub failed. Check output above."
+        return 1
+    fi
+
+    # Verify
+    APPLIED=$(grep "set default=" /boot/grub/grub.cfg \
+        | grep -v 'next_entry' | head -1)
+    log_info "GRUB default is now: ${APPLIED}"
+    log_info "System will boot '${MENU_ENTRY}' on next restart."
+    return 0
 }
 
 # ---------------------------------------------------------------------------
-# Step 4 — Persist modules across reboots
-# ---------------------------------------------------------------------------
-
-persist_modules() {
-    CONF="/etc/modules-load.d/usb-serial.conf"
-    log_info "Writing persistent module config to ${CONF}..."
-
-    tee "${CONF}" >/dev/null <<'EOF'
-# USB serial modules — loaded at boot
-# Generated by fix_usb_serial.sh
-cdc_acm
-ftdi_sio
-cp210x
-ch341
-EOF
-
-    log_info "Module persistence configured."
-}
-
-# ---------------------------------------------------------------------------
-# Step 5 — Reload udev rules
-# ---------------------------------------------------------------------------
-
-reload_udev() {
-    log_info "Reloading udev rules..."
-    udevadm control --reload-rules
-    udevadm trigger
-    log_info "udev reloaded."
-}
-
-# ---------------------------------------------------------------------------
-# Step 6 — dialout group
+# Step 4 — Add user to dialout group
 # ---------------------------------------------------------------------------
 
 add_dialout() {
-    # Only prompt if a non-root SUDO_USER is known
+    log_info "=== Configuring dialout group ==="
     TARGET_USER="${SUDO_USER:-}"
 
     if [ -z "$TARGET_USER" ]; then
-        log_warn "Cannot determine non-root user. Add your user to 'dialout' manually:"
-        log_warn "  sudo usermod -aG dialout <your_username>"
-        return
+        log_warn "SUDO_USER not set — cannot determine non-root user."
+        log_warn "After rebooting, run:  sudo usermod -aG dialout <your_username>"
+        return 0
     fi
 
     if id -nG "$TARGET_USER" | grep -qw dialout; then
         log_info "User '${TARGET_USER}' is already in the dialout group."
+        return 0
+    fi
+
+    if usermod -aG dialout "$TARGET_USER"; then
+        log_info "Added '${TARGET_USER}' to dialout (takes effect after reboot)."
+        return 0
     else
-        log_info "Adding '${TARGET_USER}' to the dialout group..."
-        usermod -aG dialout "$TARGET_USER"
-        log_info "Done. log_info out and back in for the group change to take effect."
+        log_error "Failed to add '${TARGET_USER}' to dialout."
+        log_error "After rebooting, run:  sudo usermod -aG dialout ${TARGET_USER}"
+        return 1
     fi
 }
 
 # ---------------------------------------------------------------------------
-# Step 7 — Final verification
+# run_fix — strict chain; each step must succeed before the next runs
 # ---------------------------------------------------------------------------
 
-verify() {
-    log_info "=== Post-fix Verification ==="
+run_fix() {
+    require_root
 
-    log_info "Loaded USB serial modules:"
-    lsmod | grep -E 'usbserial|cdc_acm|ftdi|cp210|ch34' || log_warn "No modules loaded yet — may need reboot."
+    install_full_kernel
+    if [ $? -ne 0 ]; then
+        log_error "Kernel installation failed — stopping. Fix the log_errorors above and re-run."
+        return 1
+    fi
 
-    log_info "Serial device nodes:"
-    ls /dev/ttyUSB* /dev/ttyACM* /dev/serial 2>/dev/null \
-        || log_warn "No device nodes found. Ensure USB passthrough is configured in your hypervisor."
+    update_bootloader
+    if [ $? -ne 0 ]; then
+        log_error "Bootloader update failed — stopping."
+        log_error "Do NOT reboot until the bootloader is correctly configured."
+        return 1
+    fi
 
-    log_info "=== Done ==="
-    log_info "If no devices appear, verify that your hypervisor is passing the USB device through to this VM."
+    # dialout is independent of booting — failure is non-fatal
+    add_dialout
+
+    log_info ""
+    log_info "========================================================="
+    log_info "  Kernel installed and GRUB updated successfully."
+    log_info "  The old cloud kernel was NOT removed (safe fallback)."
+    log_info ""
+    log_info "  Reboot now:  sudo reboot"
+    log_info ""
+    log_info "  After rebooting, verify:"
+    log_info "    uname -r          (must NOT contain 'cloud')"
+    log_info "    lsmod | grep -E 'cdc_acm|ftdi_sio|cp210x|ch341'"
+    log_info "    ls /dev/ttyUSB* /dev/ttyACM*"
+    log_info ""
+    log_info "  If the VM fails to boot, select the cloud kernel from"
+    log_info "  the GRUB menu via your hypervisor's console to recover."
+    log_info "========================================================="
+    return 0
 }
 
 # ---------------------------------------------------------------------------
-# Main
+# Usage
 # ---------------------------------------------------------------------------
 
 usage() {
@@ -177,10 +297,14 @@ usage() {
 Usage: $(basename "$0") [OPTION]
 
 Options:
-  --diagnose    Run diagnostic report only (no changes)
-  --fix         Install packages, load modules, configure persistence
-  --all         Diagnose, fix, and verify (default)
+  --diagnose    Report kernel type, GRUB config, and device state (no changes)
+  --fix         Install full kernel and configure GRUB (reboot required)
+  --all         Diagnose then fix (default)
   --help        Show this help
+
+Note:
+  A reboot is required after --fix or --all.
+  USB passthrough must also be configured in your hypervisor separately.
 
 Examples:
   sudo $(basename "$0") --diagnose
@@ -189,37 +313,32 @@ Examples:
 EOF
 }
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 main() {
     ACTION="${1:---all}"
-
     case "$ACTION" in
         --diagnose)
             diagnose
             ;;
         --fix)
             require_root
-            install_packages
-            load_modules
-            persist_modules
-            reload_udev
-            add_dialout
+            run_fix
             ;;
         --all)
             require_root
             diagnose
-            install_packages
-            load_modules
-            persist_modules
-            reload_udev
-            add_dialout
-            verify
+            log_info ""
+            run_fix
             ;;
         --help|-h)
             usage
             exit 0
             ;;
         *)
-            log_warn "Unknown option: ${ACTION}"
+            log_error "Unknown option: ${ACTION}"
             usage
             exit 1
             ;;
