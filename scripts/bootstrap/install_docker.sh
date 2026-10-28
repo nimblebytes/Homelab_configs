@@ -94,10 +94,10 @@ Examples:
   sudo sh $SCRIPT_NAME
 
   ## Install Docker in rootless mode with structured logging:
-  sudo sh $SCRIPT_NAME --docker-rootless --logger /opt/scripts/better_logs.sh
+  sudo sh $SCRIPT_NAME --docker-rootless --logger /home/${USER}/scripts/better_logs.sh
 
   ## Load install type from a parent config file:
-  sudo sh $SCRIPT_NAME --config /opt/scripts/bootstrap.env
+  sudo sh $SCRIPT_NAME --config /home/${USER}/bootstrap.env
 
   ## Uninstall Docker, keeping images and volumes:
   sudo sh $SCRIPT_NAME --uninstall

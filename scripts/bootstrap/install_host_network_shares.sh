@@ -92,7 +92,7 @@ Options:
   --share-config <file>    Path to the YAML network share config file.
                            If not provided the script searches:
                              1. Current working directory
-                             2. /opt/git/*/config/
+                             2. /home/${USER}/git/*/config/
   --logger <file>          Path to better_logs.sh for structured log output.
                            Default: no file logging, fallback stubs used.
   --create-units           Create systemd unit files (and enable them).
@@ -114,10 +114,10 @@ Examples:
   sudo sh $SCRIPT_NAME
 
   ## Specify config and logger explicitly:
-  sudo sh $SCRIPT_NAME --share-config /etc/shares.yaml --logger /opt/scripts/better_logs.sh
+  sudo sh $SCRIPT_NAME --share-config /etc/shares.yaml --logger /home/${USER}/scripts/better_logs.sh
 
   ## Load settings from a parent config then run all steps:
-  sudo sh $SCRIPT_NAME --parent-config /opt/scripts/bootstrap.env
+  sudo sh $SCRIPT_NAME --parent-config /home/${USER}/scripts/bootstrap.env
 
   ## Re-create unit files only (e.g. after editing the share config):
   sudo sh $SCRIPT_NAME --create-units
@@ -290,7 +290,7 @@ load_config_file() {
 ## Locates the YAML share config file when SHARE_CONFIG_FILE is not already set.
 ## Search order:
 ##   1. Current working directory — network_mounts.yaml
-##   2. /opt/git/*/config/network_mounts.yaml  (glob expanded by the shell)
+##   2. /home/${USER}/git/*/config/network_mounts.yaml  (glob expanded by the shell)
 ## Sets SHARE_CONFIG_FILE to the first match found and logs the path.
 ## Exits with code 1 if no file is found, as nothing can proceed without it.
 find_share_config_file() {
@@ -310,9 +310,9 @@ find_share_config_file() {
     return 0
   fi
 
-  ## Search 2: /opt/git/*/config/ — use a for loop so the glob is
+  ## Search 2: /home/${USER}/git/*/config/ — use a for loop so the glob is
   ## expanded by the shell without requiring nullglob (not POSIX)
-  for CANDIDATE in /opt/git/*/config/network_mounts.yaml; do
+  for CANDIDATE in /home/${USER}/git/*/config/network_mounts.yaml; do
     if [ -f "$CANDIDATE" ]; then
       SHARE_CONFIG_FILE="$CANDIDATE"
       log_info "Share config found at: $SHARE_CONFIG_FILE"
@@ -322,7 +322,7 @@ find_share_config_file() {
 
   log_error "No share config file found."
   log_error "Provide one with --share-config, set SHARE_CONFIG_FILE, or place"
-  log_error "network_mounts.yaml in the current directory or /opt/git/*/config/"
+  log_error "network_mounts.yaml in the current directory or /home/${USER}/git/*/config/"
   exit 1
 }
 
@@ -615,11 +615,38 @@ create_credentials() {
       done
 
     CRED_FILE="$CONST_CRED_DIR/${PROFILE}.cred"
-    if [ ! -f "$CRED_FILE" ]; then
+
+    ## Check if the credentials file should be overwritten
+    if [ -f "$CRED_FILE" ]; then       
       if [ -t 0 ]; then
-        # interactive stdin
-        read -r -p "Username for $PROFILE: " PROFILE_USER
-        read -r -p "Password for $PROFILE: " PROFILE_PWD
+        ## interactive stdin
+        printf "Credentials for profile %s already exist. Overwrite credentials (default: n)\n(y/n/enter)=> " "$PROFILE"
+        read -r OVERWRITE_CREDS
+      elif [ -r /dev/tty ]; then
+        ## fallback to terminal, script was piped
+        printf "Credentials for profile %s already exist. Overwrite credentials (default: n)\n(y/n/enter)=> " "$PROFILE" > /dev/tty
+        read -r OVERWRITE_CREDS < /dev/tty
+      else
+        ## fully non-interactive
+        OVERWRITE_CREDS="n"
+      fi
+      case "$OVERWRITE_CREDS" in
+        y*|Y*)
+          OVERWRITE_CREDS="true"
+          ;;
+        *)
+          OVERWRITE_CREDS="false"
+          ;;
+      esac
+      
+    fi
+
+    if [ ! -f "$CRED_FILE" ] || [ "$OVERWRITE_CREDS" = "true" ] ; then
+      if [ -t 0 ]; then
+        ## interactive stdin
+        printf "Username for %s: " "$PROFILE"
+        read -r PROFILE_USER
+        printf "Password for %s: " "$PROFILE"
       elif [ -r /dev/tty ]; then
         ## fallback to terminal, script was piped
         printf "Username for %s: " "$PROFILE" > /dev/tty
@@ -663,8 +690,6 @@ change_credentials() {
     log_error "Invalid choice: $CHOICE"
     return 1
   fi
-
-  CRED_FILE="$CONST_CRED_DIR/${PROFILE}.cred"
 
   printf "New username for %s: " "$PROFILE"
   read -r PROFILE_USER

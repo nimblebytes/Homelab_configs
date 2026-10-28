@@ -46,7 +46,7 @@ REPO_BASE_URL="https://raw.githubusercontent.com/${REPO_ORG}/${REPO_PROJECT}/${R
 REPO_SCRIPT_BASE_URL="${REPO_BASE_URL}/scripts"
 REPO_BOOTSTRAP_BASE_URL="${REPO_BASE_URL}/scripts/bootstrap"
 
-SCRIPT_DIR="/opt/scripts"             ## Directory where scripts will be downloaded to
+SCRIPT_DIR="/home/${USER}/scripts"             ## Directory where scripts will be downloaded to
 WORK_DIR="/tmp/bootstrap_$$"          ## For temporary files created and used by this script
 LOG_FILE="${WORK_DIR}.log"
 CONFIG_FILE=""                        ## Derived after WORK_DIR is finalised — see init_config()
