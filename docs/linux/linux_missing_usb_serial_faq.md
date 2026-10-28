@@ -1,144 +1,231 @@
-# USB Serial on Debian Cloud VMs — FAQ
+# USB Serial on Debian 13 Cloud VMs — FAQ
+
+> Applies to Debian 13 (trixie) VMs built from cloud images running
+> `linux-image-*-cloud-amd64` and `grub-cloud-amd64`.
 
 > [!Important]
-> Covers `/dev/ttyUSB`, `/dev/ttyACM`, and `/dev/serial` missing on Debian 13 cloud images running under KVM, QEMU, Proxmox, VirtualBox, or VMware.
+> Covers `/dev/ttyUSB`, `/dev/ttyACM`, and `/dev/serial` missing on Debian 13 cloud images.
 
-> [!Note] tl;dr 
+> [!Note] 
+> tl;dr
+> 
 > Run the ["fix_usb_serial.sh"](/scripts/linux/fix_usb_serial.sh) script to fix this issue with the following command:
 > ```console
-> wget -qO fix_usb_serial.sh https://your-url/fix_usb_serial.sh && chmod +x fix_usb_serial.sh && sudo ./fix_usb_serial.sh --all
+> wget -qO fix_usb_serial.sh https://raw.githubusercontent.com/nimblebytes/Homelab_configs/master/scripts/linux/fix_usb_serial.sh \
+>   && chmod +x fix_usb_serial.sh \
+>   && sudo ./fix_usb_serial.sh --all
 > ```
 
 ---
 
 ## Table of Contents
 
-- [USB Serial on Debian Cloud VMs — FAQ](#usb-serial-on-debian-cloud-vms--faq)
+- [USB Serial on Debian 13 Cloud VMs — FAQ](#usb-serial-on-debian-13-cloud-vms--faq)
   - [Table of Contents](#table-of-contents)
   - [1. Why are `/dev/ttyUSB` and `/dev/serial` missing?](#1-why-are-devttyusb-and-devserial-missing)
-  - [2. Do I need to replace the kernel?](#2-do-i-need-to-replace-the-kernel)
-  - [3. How do I check if the modules are already on disk?](#3-how-do-i-check-if-the-modules-are-already-on-disk)
-  - [4. What packages do I actually need to install?](#4-what-packages-do-i-actually-need-to-install)
-  - [5. How do I load the modules without rebooting?](#5-how-do-i-load-the-modules-without-rebooting)
-  - [6. How do I make the modules load automatically on boot?](#6-how-do-i-make-the-modules-load-automatically-on-boot)
-  - [7. Why are there still no device nodes after loading modules?](#7-why-are-there-still-no-device-nodes-after-loading-modules)
-  - [8. How do I configure USB passthrough in my hypervisor?](#8-how-do-i-configure-usb-passthrough-in-my-hypervisor)
-    - [KVM / QEMU (command line)](#kvm--qemu-command-line)
-    - [KVM / virt-manager (GUI)](#kvm--virt-manager-gui)
-    - [Proxmox](#proxmox)
-    - [VirtualBox](#virtualbox)
-    - [VMware Workstation / Fusion](#vmware-workstation--fusion)
+  - [2. Can I install extra modules to fix the cloud kernel?](#2-can-i-install-extra-modules-to-fix-the-cloud-kernel)
+  - [3. What is the correct fix?](#3-what-is-the-correct-fix)
+  - [4. How do I know if I am running a cloud kernel?](#4-how-do-i-know-if-i-am-running-a-cloud-kernel)
+  - [5. I installed `linux-image-amd64` but still booted the cloud kernel. Why?](#5-i-installed-linux-image-amd64-but-still-booted-the-cloud-kernel-why)
+  - [6. What does the `update-grub` warning about old titles mean?](#6-what-does-the-update-grub-warning-about-old-titles-mean)
+  - [7. How do I correctly replace the cloud kernel?](#7-how-do-i-correctly-replace-the-cloud-kernel)
+  - [8. Can I avoid this problem when building the image?](#8-can-i-avoid-this-problem-when-building-the-image)
   - [9. What is `/dev/serial` and why does it not exist?](#9-what-is-devserial-and-why-does-it-not-exist)
-  - [10. How do I verify everything is working?](#10-how-do-i-verify-everything-is-working)
-  - [11. I get "Permission denied" when accessing the port. How do I fix it?](#11-i-get-permission-denied-when-accessing-the-port-how-do-i-fix-it)
-  - [12. Which module do I need for my USB-serial chip?](#12-which-module-do-i-need-for-my-usb-serial-chip)
-  - [13. Can I automate all of this?](#13-can-i-automate-all-of-this)
+  - [10. After rebooting into the full kernel, still no device nodes. Why?](#10-after-rebooting-into-the-full-kernel-still-no-device-nodes-why)
+  - [11. How do I configure USB passthrough in my hypervisor?](#11-how-do-i-configure-usb-passthrough-in-my-hypervisor)
+  - [12. I get "Permission denied" accessing the serial port. How do I fix it?](#12-i-get-permission-denied-accessing-the-serial-port-how-do-i-fix-it)
+  - [13. Which kernel module handles my USB-serial chip?](#13-which-kernel-module-handles-my-usb-serial-chip)
+  - [14. How do I verify everything is working?](#14-how-do-i-verify-everything-is-working)
+  - [15. Can I automate the kernel replacement?](#15-can-i-automate-the-kernel-replacement)
 
 ---
 
 ## 1. Why are `/dev/ttyUSB` and `/dev/serial` missing?
 
-Debian cloud images are intentionally stripped down for virtualised environments. Three things are typically absent:
-
-- **USB serial kernel modules** — drivers such as `ftdi_sio`, `cp210x`, `ch341`, and `cdc_acm` are either not compiled in or not loaded at boot. These are what create `/dev/ttyUSB*` and `/dev/ttyACM*` device nodes.
-- **udev serial symlink rules** — `/dev/serial/` is a directory of symlinks created by udev. If the underlying device nodes don't exist, the symlinks are never created.
-- **No USB passthrough** — the hypervisor may not be forwarding the physical USB device into the VM, so there is nothing for the drivers to bind to even if they are loaded.
-
-All three need to be addressed for serial devices to appear.
+Debian cloud images ship `linux-image-*-cloud-amd64`, a stripped kernel with USB
+drivers compiled out entirely. There are no `.ko` files on disk for any USB serial
+driver. Because no driver exists, no device node is created, and the udev symlink
+directory `/dev/serial/` never appears.
 
 ---
 
-## 2. Do I need to replace the kernel?
+## 2. Can I install extra modules to fix the cloud kernel?
 
-**No.** You do not need to install `linux-image-amd64` or swap kernels. The correct approach is to install the extra modules package for your *existing* kernel:
+**No.** Debian does not publish a `linux-modules-extra-*` package for the cloud
+kernel. The drivers are absent by design and cannot be added without replacing the
+kernel entirely.
+
+---
+
+## 3. What is the correct fix?
+
+Install `linux-image-amd64` (the full standard kernel), configure GRUB to boot it by
+default, and reboot. See Q7 for the exact steps.
+
+---
+
+## 4. How do I know if I am running a cloud kernel?
 
 ```sh
-sudo apt install -y linux-modules-extra-$(uname -r)
+uname -r
 ```
 
-This adds the full set of out-of-tree and hardware-specific modules (including USB serial drivers) without touching the running kernel. Only resort to a kernel replacement if the modules package is unavailable for your kernel version.
+A cloud kernel version string contains `-cloud-`:
 
----
-
-## 3. How do I check if the modules are already on disk?
-
-```sh
-find /lib/modules/$(uname -r) -name '*.ko*' \
-  | grep -E 'ftdi|cp210|ch34|cdc_acm|usbserial'
 ```
-
-- **Output listed** — the driver files exist. They just need to be loaded (`modprobe`). Skip to [Q5](#5-how-do-i-load-the-modules-without-rebooting).
-- **No output** — the cloud kernel was built without them. Install `linux-modules-extra-$(uname -r)` first.
-
----
-
-## 4. What packages do I actually need to install?
-
-| Package | Purpose | Install? |
-|---|---|---|
-| `usbutils` | Provides `lsusb` for diagnosing USB devices | Recommended |
-| `kmod` | Provides `modprobe`, `lsmod` | Usually pre-installed |
-| `linux-modules-extra-$(uname -r)` | USB serial drivers for the current kernel | **Yes, if modules are missing** |
-| `linux-image-amd64` | Full replacement kernel | No — unnecessary |
-
-```sh
-sudo apt update
-sudo apt install -y usbutils kmod
-sudo apt install -y linux-modules-extra-$(uname -r)
+6.12.88+deb13-cloud-amd64    ← cloud kernel, no USB drivers
+6.12.88+deb13-amd64          ← full kernel, USB drivers present
 ```
 
 ---
 
-## 5. How do I load the modules without rebooting?
+## 5. I installed `linux-image-amd64` but still booted the cloud kernel. Why?
 
-Use `modprobe` to load the drivers immediately:
+Two things go wrong:
 
-```sh
-sudo modprobe usbserial
-sudo modprobe cdc_acm      # CDC/ACM devices, many microcontrollers
-sudo modprobe ftdi_sio     # FTDI FT232 and variants
-sudo modprobe cp210x       # Silicon Labs CP2102/CP2104
-sudo modprobe ch341        # CH340/CH341 chips
-```
+**Problem 1 — GRUB_DEFAULT points at a dynamic alias.**
+The default `GRUB_DEFAULT='Debian GNU/Linux'` is a top-level alias that always
+resolves to the newest installed kernel by version. Because `6.12.88+deb13-cloud-amd64`
+sorts as a higher version than `6.12.88+deb13-amd64`, the cloud kernel wins every
+time.
 
-Verify they loaded:
+**Problem 2 — grub-cloud-amd64 uses submenus.**
+The full kernel entry is placed inside an `Advanced options` submenu in `grub.cfg`,
+not at the top level. Setting `GRUB_DEFAULT` to an entry title only works for
+top-level entries. Referencing a submenu entry requires the `submenu_id>entry_id`
+format, which is brittle and version-specific.
 
-```sh
-lsmod | grep -E 'usbserial|cdc_acm|ftdi|cp210|ch34'
-```
-
----
-
-## 6. How do I make the modules load automatically on boot?
-
-Create a config file in `/etc/modules-load.d/`:
-
-```sh
-sudo tee /etc/modules-load.d/usb-serial.conf <<'EOF'
-cdc_acm
-ftdi_sio
-cp210x
-ch341
-EOF
-```
-
-The `systemd-modules-load` service reads all files in that directory at boot. No further configuration is needed.
+The correct fix (Q7) avoids both problems by disabling submenus entirely before
+setting the default.
 
 ---
 
-## 7. Why are there still no device nodes after loading modules?
+## 6. What does the `update-grub` warning about old titles mean?
 
-The most common reason: **the hypervisor is not passing the USB device through to the VM.** The kernel drivers load successfully but have no hardware to bind to, so no device node is created.
-
-Check what USB devices the VM can see:
-
-```sh
-lsusb
+```
+Warning: Please don't use old title `Debian GNU/Linux, with Linux 6.12.88+deb13-amd64'
+for GRUB_DEFAULT, use `Advanced options for Debian GNU/Linux>Debian GNU/Linux,
+with Linux 6.12.88+deb13-amd64' (for versions before 2.00) or
+`gnulinux-advanced-<uuid>>gnulinux-6.12.88+deb13-amd64-advanced-<uuid>'
+(for 2.00 or later)
 ```
 
-If your serial adapter does not appear in `lsusb` output, configure USB passthrough in your hypervisor first. See [Q8](#8-how-do-i-configure-usb-passthrough-in-my-hypervisor).
+This warning appears when `GRUB_DEFAULT` is set to a bare entry title string such as
+`'Debian GNU/Linux, with Linux 6.12.88+deb13-amd64'`. GRUB is telling you two things:
 
-After plugging in or passing through a device, check `dmesg` for binding:
+1. **The entry is inside a submenu.** Bare title matching only works for top-level
+   entries. For submenu entries, GRUB requires the `submenu_id>entry_id` format.
+
+2. **Title-based matching is deprecated.** Since GRUB 2.00, the stable way to
+   reference an entry is by its internal `--id` value, not its display title.
+
+The fix in Q7 avoids this warning entirely by setting `GRUB_DISABLE_SUBMENU=y` before
+running `update-grub`. With submenus disabled, all kernel entries are promoted to the
+top level and can be matched directly by title without the `>` separator.
+
+---
+
+## 7. How do I correctly replace the cloud kernel?
+
+```sh
+# 1. Install the full kernel
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y linux-image-amd64
+
+# 2. Create the grub.d drop-in directory (standard on Debian 13)
+sudo mkdir -p /etc/default/grub.d
+
+# 3. Disable GRUB submenus — promotes all entries to the top level
+echo 'GRUB_DISABLE_SUBMENU=y' | sudo tee /etc/default/grub.d/99-disable-submenus.cfg
+
+# 4. First update-grub pass — regenerates grub.cfg with flat layout
+sudo update-grub
+
+# 5. Find the version of the newly installed full kernel
+NEW_KVER=$(ls -1 /boot/vmlinuz-* \
+    | awk -F'/boot/vmlinuz-' '{print $2}' \
+    | grep -v cloud \
+    | sort -V \
+    | tail -1)
+echo "New kernel: $NEW_KVER"
+
+# 6. Extract the exact menu entry title using literal string match (safe with '+')
+MENU_ENTRY=$(awk -F"'" -v ver="$NEW_KVER" '
+    /^[[:space:]]*menuentry / && index($0, ver) > 0 {
+        print $2; exit
+    }
+' /boot/grub/grub.cfg)
+echo "Menu entry: $MENU_ENTRY"
+
+# 7. Write the GRUB default drop-in
+printf 'GRUB_DEFAULT="%s"\n' "$MENU_ENTRY" \
+    | sudo tee /etc/default/grub.d/99-set-standard-kernel.cfg
+
+# 8. Final update-grub pass — bakes the default into grub.cfg
+sudo update-grub
+
+# 9. Reboot
+sudo reboot
+```
+
+After rebooting, verify:
+
+```sh
+uname -r    # Must NOT contain 'cloud'
+```
+
+The old cloud kernel is left installed as a fallback. If the VM fails to boot, select
+it from the GRUB menu via your hypervisor's console.
+
+---
+
+## 8. Can I avoid this problem when building the image?
+
+Yes. The `build-openstack-debian-image` tool accepts a `--no-cloud-kernel` flag:
+
+```sh
+build-openstack-debian-image \
+    -r trixie \
+    --no-cloud-kernel \
+    --output debian-trixie-amd64 \
+    --architecture amd64 \
+    --image-size 8
+```
+
+Alternatively, build from the Debian netinstall ISO — it uses the full kernel by
+default.
+
+---
+
+## 9. What is `/dev/serial` and why does it not exist?
+
+`/dev/serial/` is a udev-managed directory of stable symlinks:
+
+```
+/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_XXXXXXXX-if00-port0
+/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0
+```
+
+These are created automatically when a serial device node (`/dev/ttyUSB*` or
+`/dev/ttyACM*`) appears. Without USB drivers in the kernel, no device node is ever
+created and the symlinks never appear.
+
+After booting the full kernel and plugging in a USB serial device, the symlinks are
+created by udev with no extra configuration. The `by-id` path is stable across reboots
+and re-plugging and is preferred over `/dev/ttyUSB0` in scripts and service files.
+
+---
+
+## 10. After rebooting into the full kernel, still no device nodes. Why?
+
+The kernel replacement is a prerequisite. The hypervisor must also pass the USB device
+through to the VM — without that, the kernel has no hardware to bind a driver to.
+
+```sh
+lsusb    # Should list your serial adapter
+```
+
+If it does not appear, configure USB passthrough (Q11), then check `dmesg`:
 
 ```sh
 dmesg | grep -iE 'usb|tty|serial' | tail -20
@@ -147,153 +234,100 @@ dmesg | grep -iE 'usb|tty|serial' | tail -20
 A successful bind looks like:
 
 ```
-usb 1-1: new full-speed USB device
+usb 1-1: new full-speed USB device number 2
 ftdi_sio 1-1:1.0: FTDI USB Serial Device converter detected
 usb 1-1: FTDI USB Serial Device converter now attached to ttyUSB0
 ```
 
 ---
 
-## 8. How do I configure USB passthrough in my hypervisor?
+## 11. How do I configure USB passthrough in my hypervisor?
 
-First, find your device's vendor and product ID on the **host**:
+Find the device VID and PID on the **host**:
 
 ```sh
 lsusb
-# Example output:
-# Bus 001 Device 003: ID 0403:6001 Future Technology Devices International FT232 Serial (UART) IC
-#                        ^^^^ ^^^^
-#                        VID  PID
+# Example: Bus 001 Device 003: ID 0403:6001 Future Technology Devices FT232
+#                                  ^^^^ ^^^^
+#                                  VID  PID
 ```
 
-Then configure passthrough:
-
-### KVM / QEMU (command line)
-
-```sh
--device usb-host,vendorid=0x0403,productid=0x6001
-```
-
-### KVM / virt-manager (GUI)
-
-1. Open VM details → **Add Hardware** → **USB Host Device**
-2. Select your device from the list → **Finish**
-
-### Proxmox
-
-In the VM's **Hardware** tab → **Add** → **USB Device** → select the device by vendor/product ID or port.
-
-### VirtualBox
-
-**Settings** → **USB** → enable USB controller → add a filter matching your device.
-> Requires the VirtualBox Extension Pack for USB 2.0/3.0 passthrough.
-
-### VMware Workstation / Fusion
-
-**VM** → **Settings** → **USB Controller** → connect device, or use **VM** → **Removable Devices** to attach it while the VM is running.
+| Hypervisor | Method |
+|---|---|
+| **Proxmox** | VM Hardware → Add → USB Device → select by vendor/product ID |
+| **virt-manager** | Add Hardware → USB Host Device → select from list |
+| **QEMU CLI** | `-device usb-host,vendorid=0x0403,productid=0x6001` |
+| **VirtualBox** | Settings → USB → add filter (Extension Pack required for USB 2/3) |
+| **VMware** | VM → Settings → USB Controller or VM → Removable Devices |
 
 ---
 
-## 9. What is `/dev/serial` and why does it not exist?
+## 12. I get "Permission denied" accessing the serial port. How do I fix it?
 
-`/dev/serial/` is a directory of persistent symlinks maintained by udev, organised as:
-
-```
-/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_XXXXXXXX-if00-port0
-/dev/serial/by-path/pci-0000:00:14.0-usb-0:1:1.0-port0
-```
-
-These symlinks are created automatically by udev rules (shipped with the `udev` package) when a serial device node appears. If `/dev/ttyUSB0` doesn't exist, `/dev/serial/` won't either.
-
-**Fix:** resolve the missing device node first (modules + passthrough), then trigger udev:
-
-```sh
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-The `by-id` symlinks are stable across reboots and re-plugging, making them preferable to `/dev/ttyUSB0` in scripts and service files.
-
----
-
-## 10. How do I verify everything is working?
-
-Run this diagnostic sequence:
-
-```sh
-# 1. Confirm the USB device is visible to the VM
-lsusb
-
-# 2. Confirm the driver module is loaded
-lsmod | grep -E 'ftdi|cp210|ch34|cdc_acm'
-
-# 3. Confirm device nodes exist
-ls -la /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
-
-# 4. Confirm udev serial symlinks exist
-ls -la /dev/serial/by-id/ 2>/dev/null
-
-# 5. Check kernel bind messages
-dmesg | grep -iE 'usb|tty|serial' | tail -20
-```
-
-All five checks should return output. If any are empty, refer to the relevant FAQ entry.
-
----
-
-## 11. I get "Permission denied" when accessing the port. How do I fix it?
-
-Serial device nodes are owned by the `dialout` group. Add your user to it:
+Serial ports are owned by the `dialout` group:
 
 ```sh
 sudo usermod -aG dialout $USER
 ```
 
-**You must log out and log back in** (or start a new login shell) for the group change to take effect. Verify with:
+Log out and back in (or reboot) for the change to take effect:
 
 ```sh
-groups
-# Should include: dialout
+groups    # Should include: dialout
 ```
-
-To avoid logging out during a session you can use:
-
-```sh
-newgrp dialout
-```
-
-This opens a subshell with the new group active for the current session only.
 
 ---
 
-## 12. Which module do I need for my USB-serial chip?
+## 13. Which kernel module handles my USB-serial chip?
 
 | Chip | Common Devices | Module |
 |---|---|---|
-| FTDI FT232R/FT2232 | Many USB-serial adapters, Arduino Uno (older) | `ftdi_sio` |
-| Silicon Labs CP2102/CP2104 | NodeMCU, many ESP32 dev boards | `cp210x` |
-| WCH CH340/CH341 | Cheap USB-serial adapters, Arduino Nano clones | `ch341` |
-| CDC/ACM | Arduino Leonardo/Micro, STM32, Raspberry Pi Pico | `cdc_acm` |
+| FTDI FT232R / FT2232 | Most USB-serial adapters | `ftdi_sio` |
+| Silicon Labs CP2102 / CP2104 | NodeMCU, many ESP32 boards | `cp210x` |
+| WCH CH340 / CH341 | Cheap adapters, Arduino Nano clones | `ch341` |
+| CDC/ACM | Arduino Leonardo/Micro, STM32, Pi Pico | `cdc_acm` |
 | Prolific PL2303 | Older USB-serial cables | `pl2303` |
 
-If unsure which chip your device uses, run `lsusb` and look up the vendor/product ID pair.
+On the full kernel the correct module loads automatically via udev when the device is
+plugged in. Manual `modprobe` is not required.
 
 ---
 
-## 13. Can I automate all of this?
-
-The shell script [fix_usb_serial.sh](/scripts/linux/fix_usb_serial.sh) covers diagnosis and resolution of this issue. The script need the 
+## 14. How do I verify everything is working?
 
 ```sh
-# Run full diagnosis and fix
-sudo ./fix_usb_serial.sh --all
+# 1. Confirm not running the cloud kernel
+uname -r                    # Must NOT contain 'cloud'
 
-# Diagnose only (no changes made)
-sudo ./fix_usb_serial.sh --diagnose
+# 2. Confirm USB device is visible
+lsusb
 
-# Install and configure only
-sudo ./fix_usb_serial.sh --fix
+# 3. Confirm driver loaded automatically
+lsmod | grep -E 'ftdi_sio|cp210x|ch341|cdc_acm'
+
+# 4. Confirm device nodes exist
+ls -la /dev/ttyUSB* /dev/ttyACM*
+
+# 5. Confirm udev symlinks exist
+ls -la /dev/serial/by-id/
+
+# 6. Check kernel bind messages
+dmesg | grep -iE 'usb|tty|serial' | tail -20
 ```
 
-> [!Important] 
-> USB passthrough must be configured in your hypervisor manually — it cannot be scripted from inside the VM.
+---
+
+## 15. Can I automate the kernel replacement?
+
+Yes. The shell script [fix_usb_serial.sh](/scripts/linux/fix_usb_serial.sh) covers diagnosis and resolution of this issue.
+
+```sh
+chmod +x fix_usb_serial.sh
+
+sudo ./fix_usb_serial.sh --diagnose   # Read-only report, no changes
+sudo ./fix_usb_serial.sh --fix        # Install kernel and configure GRUB
+sudo ./fix_usb_serial.sh --all        # Diagnose then fix (default)
+```
+
+A reboot is required after `--fix` or `--all`. USB passthrough must be configured in
+the hypervisor separately.
