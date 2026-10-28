@@ -10,27 +10,27 @@
         description: Main Router
 
     - OPNSense - Config:
-        href: https://10.0.30.1
+        href: https://10.0.40.1
         description: Sharkfin - Firewall
         icon: opnsense.png
 
     - Proxmox - Sharkfin:
         icon: proxmox.svg
-        href: https://10.0.30.2:8006
+        href: https://sharkfin.{{HOMEPAGE_VAR_DOMAIN_NAME}}:8006
         description: Sharkfin - Hypervisor
         widget:
             type: proxmox
-            url: https://10.0.30.2:8006
+            url: https://10.0.40.6:8006
             username: {{HOMEPAGE_FILE_PROXMOX_USER}}
             password: {{HOMEPAGE_FILE_PROXMOX_API_KEY}}
 
     - Proxmox - Smallbeard:
         icon: proxmox.svg
-        href: https://10.0.30.6:8006
+        href: https://smallbeard.{{HOMEPAGE_VAR_DOMAIN_NAME}}:8006
         description: Smallbeard - Hypervisor
         widget:
             type: proxmox
-            url: https://10.0.30.6:8006
+            url: https://10.0.40.8:8006
             username: {{HOMEPAGE_FILE_PROXMOX_SMALLBEARD_USER}}
             password: {{HOMEPAGE_FILE_PROXMOX_SMALLBEARD_API_KEY}}            
 
