@@ -92,7 +92,7 @@ docker network create -d macvlan \
 
 NETWORK_NAME=niot_vlan
 docker network create -d macvlan \
-  --subnet=10.0.220.0/24 \
+  --subnet=10.0.22.0/24 \
   --ip-range=10.0.22.64/27 \
   --gateway=10.0.22.1 \
   --label "com.docker.compose.network=${NETWORK_NAME} " \
