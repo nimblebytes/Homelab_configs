@@ -1,0 +1,34 @@
+########################### NETWORKS
+networks:
+  proxy:
+    external: true
+
+services:
+  esphome:
+    image: ghcr.io/esphome/esphome
+    container_name: esphome
+    # privileged: true
+    # network_mode: host
+    networks:
+      proxy: {}
+    expose: [6052]
+    # ports:
+      # - ${HOST_IP:?}:6052:6052                      ## Disabled: Using host network
+      # - 6052:6052                                   ## Make it available on device and docker network layer
+    restart: always
+    environment:
+      - USERNAME=test
+      - PASSWORD=ChangeMe
+    volumes:
+      - ${CONTAINER_VOLUME:-./volume_data}:/config
+      - /etc/localtime:/etc/localtime:ro
+    # devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0  ## Access to the Zigbee Coordinator 
+      # - /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0:/dev/ttyUSB1  ## Front right USB 2.0 Port
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.esphome.entrypoints: https-internal    ## "https-internal"; or "https-external"; or addtional traefik router/s needed for different config
+      traefik.http.routers.esphome.rule: Host(`esphome.${DOMAIN_NAME:-local}`)
+      traefik.http.routers.esphome.tls.certresolver: letsencrypt_dns ## letsencrypt; letsencrypt_dns; letsencrypt_testing
+      traefik.http.routers.esphome.service: esphome
+      traefik.http.services.esphome.loadbalancer.server.url: http://esphome:6052  ## Do not use when Port & scheme is used
