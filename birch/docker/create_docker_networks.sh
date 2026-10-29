@@ -49,3 +49,53 @@ docker network create \
 
   ## How to define an address already in use. NOT for reserving an IP
   # --aux-address="DEVICE_NAME=172.27.0.2" \
+
+NETWORK_NAME=mmgt_vlan
+docker network create -d macvlan \
+  --subnet=10.0.40.0/24 \
+  --ip-range=10.0.40.64/27\
+  --gateway=10.0.40.1 \
+  --label "com.docker.compose.network=${NETWORK_NAME} " \
+  --label "internal.docker.network.description=Management vlan network (${HOSTNAME:?})" \
+  -o parent=eth0.40 \
+  ${NETWORK_NAME}
+
+NETWORK_NAME=dmz_vlan
+docker network create -d macvlan \
+  --subnet=10.0.31.0/24 \
+  --ip-range=10.0.31.64/27 \
+  --gateway=10.0.31.1 \
+  --label "com.docker.compose.network=${NETWORK_NAME} " \
+  --label "internal.docker.network.description=DMZ vlan network (${HOSTNAME:?})" \
+  -o parent=eth0.31 \
+  ${NETWORK_NAME} 
+
+NETWORK_NAME=app_vlan
+docker network create -d macvlan \
+  --subnet=10.0.32.0/24 \
+  --ip-range=10.0.32.64/27 \
+  --gateway=10.0.32.1 \
+  --label "com.docker.compose.network=${NETWORK_NAME} " \
+  --label "internal.docker.network.description=App server vlan network (${HOSTNAME:?})" \
+  -o parent=eth0.32 \
+  ${NETWORK_NAME} 
+
+NETWORK_NAME=iot_vlan
+docker network create -d macvlan \
+  --subnet=10.0.20.0/24 \
+  --ip-range=10.0.20.64/27 \
+  --gateway=10.0.20.1 \
+  --label "com.docker.compose.network=${NETWORK_NAME} " \
+  --label "internal.docker.network.description=IoT vlan network (${HOSTNAME:?})" \
+  -o parent=eth0.20 \
+  ${NETWORK_NAME}   
+
+NETWORK_NAME=niot_vlan
+docker network create -d macvlan \
+  --subnet=10.0.220.0/24 \
+  --ip-range=10.0.22.64/27 \
+  --gateway=10.0.22.1 \
+  --label "com.docker.compose.network=${NETWORK_NAME} " \
+  --label "internal.docker.network.description=Isolated IoT vlan network (${HOSTNAME:?})" \
+  -o parent=eth0.22 \
+  ${NETWORK_NAME}   
